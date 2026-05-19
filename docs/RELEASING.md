@@ -28,8 +28,11 @@ Add a link reference at the bottom of the file:
 
 ### 3. Commit and push
 
+Run `cargo update --workspace` first to update `Cargo.lock` to reflect the new version:
+
 ```bash
-git add Cargo.toml CHANGELOG.md <any other changed files>
+cargo update --workspace
+git add Cargo.toml Cargo.lock CHANGELOG.md <any other changed files>
 git commit -m "Release v0.1.1"
 git push
 ```

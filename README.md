@@ -3,8 +3,8 @@
 A Rust client for the [Instructure Canvas LMS REST API](https://canvas.instructure.com/doc/api/).
 
 [![Crates.io](https://img.shields.io/crates/v/canvas-lms-api)](https://crates.io/crates/canvas-lms-api)
-[![docs.rs](https://docs.rs/canvas-lms-api/badge.svg)](https://docs.rs/canvas-lms-api)
-[![CI](https://github.com/robcond/canvas-lms-api/actions/workflows/ci.yml/badge.svg)](https://github.com/robcond/canvas-lms-api/actions/workflows/ci.yml)
+[![docs.rs](https://img.shields.io/docsrs/canvas-lms-api)](https://docs.rs/canvas-lms-api)
+[![CI](https://github.com/RobertConde/canvas-lms-api/actions/workflows/ci.yml/badge.svg)](https://github.com/RobertConde/canvas-lms-api/actions/workflows/ci.yml)
 
 ## Quickstart
 

@@ -12,8 +12,7 @@ use crate::{
         module::Module,
         page::Page,
         params::{
-            assignment_params::CreateAssignmentParams,
-            course_params::UpdateCourseParams,
+            assignment_params::CreateAssignmentParams, course_params::UpdateCourseParams,
             quiz_params::CreateQuizParams,
         },
         quiz::Quiz,
@@ -115,10 +114,7 @@ impl Course {
     /// `GET /api/v1/courses/:id/sections/:section_id`
     pub async fn get_section(&self, section_id: u64) -> Result<Section> {
         self.req()
-            .get(
-                &format!("courses/{}/sections/{section_id}", self.id),
-                &[],
-            )
+            .get(&format!("courses/{}/sections/{section_id}", self.id), &[])
             .await
     }
 

@@ -114,8 +114,7 @@ impl CanvasBlocking {
     /// # Canvas API
     /// `POST /api/v1/accounts/:account_id/users`
     pub fn create_user(&self, account_id: u64, params: CreateUserParams) -> Result<User> {
-        self.rt
-            .block_on(self.inner.create_user(account_id, params))
+        self.rt.block_on(self.inner.create_user(account_id, params))
     }
 
     // -------------------------------------------------------------------------

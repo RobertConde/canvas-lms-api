@@ -6,10 +6,7 @@ use crate::{
     resources::{
         account::Account,
         course::Course,
-        params::{
-            course_params::CreateCourseParams,
-            user_params::CreateUserParams,
-        },
+        params::{course_params::CreateCourseParams, user_params::CreateUserParams},
         user::{CurrentUser, User, UserId},
     },
 };
@@ -90,7 +87,11 @@ impl Canvas {
     ///
     /// # Canvas API
     /// `POST /api/v1/accounts/:account_id/courses`
-    pub async fn create_course(&self, account_id: u64, params: CreateCourseParams) -> Result<Course> {
+    pub async fn create_course(
+        &self,
+        account_id: u64,
+        params: CreateCourseParams,
+    ) -> Result<Course> {
         let form = wrap_params("course", &params);
         let mut course: Course = self
             .requester

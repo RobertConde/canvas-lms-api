@@ -2,6 +2,8 @@
 //!
 //! An async Rust client for the [Instructure Canvas LMS REST API](https://canvas.instructure.com/doc/api/).
 //!
+//! Licensed under the [MIT License](https://github.com/RobertConde/canvas-lms-api/blob/main/LICENSE).
+//!
 //! ## Quickstart
 //!
 //! ```no_run

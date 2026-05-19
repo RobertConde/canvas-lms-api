@@ -12,12 +12,14 @@ use url::Url;
 /// let items: Vec<()> = stream.collect_all().await?;
 /// # Ok(()) }
 /// ```
+type InjectFn<T> = Box<dyn Fn(T, Arc<Requester>) -> T + Send>;
+
 pub struct PageStream<T> {
     requester: Arc<Requester>,
     next_url: Option<Url>,
     params: Vec<(String, String)>,
     buffer: VecDeque<T>,
-    inject_fn: Option<Box<dyn Fn(T, Arc<Requester>) -> T + Send>>,
+    inject_fn: Option<InjectFn<T>>,
     _phantom: PhantomData<T>,
 }
 

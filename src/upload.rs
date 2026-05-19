@@ -57,9 +57,7 @@ pub(crate) async fn execute_upload(
     let body = resp.text().await?;
 
     // Canvas sometimes prefixes its JSON with `while(1);` to prevent CSRF via JSON hijacking.
-    let json_str = body
-        .strip_prefix("while(1);")
-        .unwrap_or(&body);
+    let json_str = body.strip_prefix("while(1);").unwrap_or(&body);
 
     let file: File = serde_json::from_str(json_str)?;
     Ok(file)

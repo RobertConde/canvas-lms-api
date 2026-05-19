@@ -72,7 +72,10 @@ mod tests {
     #[test]
     fn bool_lowercased() {
         let v = json!({"published": true});
-        assert_eq!(flatten_params(&v), vec![("published".into(), "true".into())]);
+        assert_eq!(
+            flatten_params(&v),
+            vec![("published".into(), "true".into())]
+        );
     }
 
     #[test]

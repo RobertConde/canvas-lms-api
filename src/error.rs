@@ -56,6 +56,7 @@ pub struct ApiError {
 pub(crate) struct CanvasErrorBody {
     pub errors: Option<Vec<ApiError>>,
     pub error: Option<String>,
+    #[allow(dead_code)] // surfaced in future error reporting
     pub error_report_id: Option<u64>,
 }
 

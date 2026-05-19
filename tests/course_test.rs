@@ -8,15 +8,13 @@ async fn test_get_course() {
 
     Mock::given(method("GET"))
         .and(path("/api/v1/courses/1"))
-        .respond_with(
-            ResponseTemplate::new(200).set_body_json(serde_json::json!({
-                "id": 1,
-                "name": "Introduction to Rust",
-                "course_code": "RUST-101",
-                "workflow_state": "available",
-                "account_id": 10
-            })),
-        )
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 1,
+            "name": "Introduction to Rust",
+            "course_code": "RUST-101",
+            "workflow_state": "available",
+            "account_id": 10
+        })))
         .mount(&server)
         .await;
 
@@ -35,11 +33,9 @@ async fn test_get_course_not_found() {
 
     Mock::given(method("GET"))
         .and(path("/api/v1/courses/9999"))
-        .respond_with(
-            ResponseTemplate::new(404).set_body_json(serde_json::json!({
-                "errors": [{"message": "The specified resource does not exist."}]
-            })),
-        )
+        .respond_with(ResponseTemplate::new(404).set_body_json(serde_json::json!({
+            "errors": [{"message": "The specified resource does not exist."}]
+        })))
         .mount(&server)
         .await;
 
@@ -60,10 +56,7 @@ async fn test_get_courses_pagination() {
         .and(path("/api/v1/courses"))
         .respond_with(
             ResponseTemplate::new(200)
-                .insert_header(
-                    "Link",
-                    format!("<{}>; rel=\"next\"", page2_url),
-                )
+                .insert_header("Link", format!("<{}>; rel=\"next\"", page2_url))
                 .set_body_json(serde_json::json!([
                     {"id": 1, "name": "Course A"},
                     {"id": 2, "name": "Course B"}
@@ -76,11 +69,9 @@ async fn test_get_courses_pagination() {
     // Second page — no Link header (last page)
     Mock::given(method("GET"))
         .and(wiremock::matchers::query_param("page", "2"))
-        .respond_with(
-            ResponseTemplate::new(200).set_body_json(serde_json::json!([
-                {"id": 3, "name": "Course C"}
-            ])),
-        )
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"id": 3, "name": "Course C"}
+        ])))
         .mount(&server)
         .await;
 

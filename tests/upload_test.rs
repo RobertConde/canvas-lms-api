@@ -106,9 +106,6 @@ async fn test_upload_strips_while1_prefix() {
         ..Default::default()
     };
 
-    let file = course
-        .upload_file(request, vec![0u8; 1024])
-        .await
-        .unwrap();
+    let file = course.upload_file(request, vec![0u8; 1024]).await.unwrap();
     assert_eq!(file.id, 99);
 }

@@ -59,11 +59,9 @@ fn test_blocking_get_courses_pagination() {
     rt.block_on(
         Mock::given(method("GET"))
             .and(query_param("page", "2"))
-            .respond_with(
-                ResponseTemplate::new(200).set_body_json(serde_json::json!([
-                    {"id": 3, "name": "Course C"}
-                ])),
-            )
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+                {"id": 3, "name": "Course C"}
+            ])))
             .mount(&server),
     );
 

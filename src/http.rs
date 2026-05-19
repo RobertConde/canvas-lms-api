@@ -8,7 +8,9 @@ use url::Url;
 pub(crate) struct Requester {
     pub(crate) client: Client,
     pub(crate) base_url: Url,
+    #[allow(dead_code)] // used in v0.2 new-quizzes feature
     pub(crate) new_quizzes_url: Url,
+    #[allow(dead_code)] // used in v0.2 graphql feature
     pub(crate) graphql_url: Url,
     access_token: String,
 }
@@ -34,11 +36,7 @@ impl Requester {
         format!("Bearer {}", self.access_token)
     }
 
-    pub(crate) async fn get_raw(
-        &self,
-        url: Url,
-        params: &[(String, String)],
-    ) -> Result<Response> {
+    pub(crate) async fn get_raw(&self, url: Url, params: &[(String, String)]) -> Result<Response> {
         info!("GET {url}");
         debug!("params: {params:?}");
         let resp = self
@@ -115,6 +113,7 @@ impl Requester {
         Ok(resp.json().await?)
     }
 
+    #[allow(dead_code)] // used by future resource update methods
     pub(crate) async fn patch<T: DeserializeOwned>(
         &self,
         endpoint: &str,
@@ -163,9 +162,7 @@ async fn check_status(resp: Response) -> Result<Response> {
         })
         .unwrap_or_else(|| body.clone());
 
-    let errors = parsed
-        .and_then(|b| b.errors)
-        .unwrap_or_default();
+    let errors = parsed.and_then(|b| b.errors).unwrap_or_default();
 
     Err(match status.as_u16() {
         400 => CanvasError::BadRequest { message, errors },
@@ -178,9 +175,6 @@ async fn check_status(resp: Response) -> Result<Response> {
         429 => CanvasError::RateLimitExceeded {
             remaining: rate_remaining,
         },
-        s => CanvasError::ApiError {
-            status: s,
-            message,
-        },
+        s => CanvasError::ApiError { status: s, message },
     })
 }

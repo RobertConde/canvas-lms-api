@@ -13,6 +13,8 @@ pub mod folder;
 pub mod gradebook_history;
 pub mod group;
 pub mod module;
+#[cfg(feature = "new-quizzes")]
+pub mod new_quiz;
 pub mod outcome;
 pub mod page;
 pub mod params;

@@ -63,6 +63,27 @@ impl<T: DeserializeOwned> PageStream<T> {
         }
     }
 
+    #[cfg(feature = "new-quizzes")]
+    pub(crate) fn new_with_injector_nq(
+        requester: Arc<Requester>,
+        endpoint: &str,
+        mut params: Vec<(String, String)>,
+        inject: impl Fn(T, Arc<Requester>) -> T + Send + 'static,
+    ) -> Self {
+        if !params.iter().any(|(k, _)| k == "per_page") {
+            params.push(("per_page".into(), "100".into()));
+        }
+        let next_url = requester.new_quizzes_url.join(endpoint).ok();
+        Self {
+            requester,
+            next_url,
+            params,
+            buffer: VecDeque::new(),
+            inject_fn: Some(Box::new(inject)),
+            _phantom: PhantomData,
+        }
+    }
+
     /// Fetch the next page and push items into the buffer. Returns false when exhausted.
     async fn fetch_next(&mut self) -> Result<bool> {
         let url = match self.next_url.take() {

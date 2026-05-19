@@ -146,16 +146,16 @@ impl MigrationIssue {
     /// # Canvas API
     /// `PUT /api/v1/.../content_migrations/:migration_id/migration_issues/:id`
     pub async fn update(&self, workflow_state: &str) -> Result<MigrationIssue> {
-        let url = self
+        let migration_url = self
             .content_migration_url
             .as_deref()
             .expect("MigrationIssue missing content_migration_url");
-        // Strip the base URL prefix by resolving relative to the content_migration endpoint
         let params = vec![("workflow_state".to_string(), workflow_state.to_string())];
-        // Build the issue URL by appending /migration_issues/:id to the migration URL
-        let endpoint = format!("{}/migration_issues/{}", url, self.id);
-        // Remove leading slash for Requester::put which joins relative to base_url
-        let endpoint = endpoint.trim_start_matches('/');
+        // Canvas returns content_migration_url as "/api/v1/..." — strip that prefix
+        // so Requester can join the relative path to base_url without doubling it.
+        let raw = format!("{}/migration_issues/{}", migration_url, self.id);
+        let endpoint = raw.trim_start_matches('/');
+        let endpoint = endpoint.strip_prefix("api/v1/").unwrap_or(endpoint);
         let mut issue: MigrationIssue = self.req().put(endpoint, &params).await?;
         issue.requester = self.requester.clone();
         Ok(issue)

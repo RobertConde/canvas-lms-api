@@ -11,6 +11,7 @@ use crate::{
         enrollment::Enrollment,
         external_tool::{ExternalTool, ExternalToolParams},
         file::File,
+        gradebook_history::{Day, Grader, SubmissionHistory, SubmissionVersion},
         group::Group,
         module::Module,
         outcome::{OutcomeGroup, OutcomeLink, UpdateOutcomeGroupParams},
@@ -20,7 +21,7 @@ use crate::{
             quiz_params::CreateQuizParams,
         },
         quiz::Quiz,
-        rubric::{Rubric, RubricParams},
+        rubric::{Rubric, RubricAssociation, RubricParams},
         section::Section,
         tab::Tab,
         types::WorkflowState,
@@ -433,6 +434,39 @@ impl Course {
         Ok(rubric)
     }
 
+    /// Fetch a single rubric association by ID.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/rubric_associations/:id`
+    pub async fn get_rubric_association(&self, association_id: u64) -> Result<RubricAssociation> {
+        let mut assoc: RubricAssociation = self
+            .req()
+            .get(
+                &format!("courses/{}/rubric_associations/{association_id}", self.id),
+                &[],
+            )
+            .await?;
+        assoc.requester = self.requester.clone();
+        Ok(assoc)
+    }
+
+    /// Stream all rubric associations for this course.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/rubric_associations`
+    pub fn get_rubric_associations(&self) -> PageStream<RubricAssociation> {
+        let course_id = self.id;
+        PageStream::new_with_injector(
+            Arc::clone(self.req()),
+            &format!("courses/{course_id}/rubric_associations"),
+            vec![],
+            |mut a: RubricAssociation, req| {
+                a.requester = Some(Arc::clone(&req));
+                a
+            },
+        )
+    }
+
     // -------------------------------------------------------------------------
     // Blueprint
     // -------------------------------------------------------------------------
@@ -587,5 +621,127 @@ impl Course {
             .await?;
         group.requester = self.requester.clone();
         Ok(group)
+    }
+
+    // -------------------------------------------------------------------------
+    // Gradebook History
+    // -------------------------------------------------------------------------
+
+    /// Stream the days for which there is gradebook history in this course.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/gradebook_history/days`
+    pub fn get_gradebook_history_dates(&self) -> PageStream<Day> {
+        PageStream::new(
+            Arc::clone(self.req()),
+            &format!("courses/{}/gradebook_history/days", self.id),
+            vec![],
+        )
+    }
+
+    /// Stream graders who worked in this course on a given date.
+    ///
+    /// `date` should be formatted as `YYYY-MM-DD`.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/gradebook_history/:date`
+    pub fn get_gradebook_history_details(&self, date: &str) -> PageStream<Grader> {
+        PageStream::new(
+            Arc::clone(self.req()),
+            &format!("courses/{}/gradebook_history/{date}", self.id),
+            vec![],
+        )
+    }
+
+    /// Stream submission versions graded by a specific grader on a specific assignment and date.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/gradebook_history/:date/graders/:grader_id/assignments/:assignment_id/submissions`
+    pub fn get_submission_history(
+        &self,
+        date: &str,
+        grader_id: u64,
+        assignment_id: u64,
+    ) -> PageStream<SubmissionHistory> {
+        PageStream::new(
+            Arc::clone(self.req()),
+            &format!(
+                "courses/{}/gradebook_history/{date}/graders/{grader_id}/assignments/{assignment_id}/submissions",
+                self.id
+            ),
+            vec![],
+        )
+    }
+
+    /// Stream all submission versions (uncollated) for this course.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/gradebook_history/feed`
+    pub fn get_uncollated_submissions(&self) -> PageStream<SubmissionVersion> {
+        PageStream::new(
+            Arc::clone(self.req()),
+            &format!("courses/{}/gradebook_history/feed", self.id),
+            vec![],
+        )
+    }
+
+    // -------------------------------------------------------------------------
+    // New Quizzes (feature = "new-quizzes")
+    // -------------------------------------------------------------------------
+
+    /// Fetch a single New Quiz by its assignment ID.
+    ///
+    /// # Canvas API
+    /// `GET /api/quiz/v1/courses/:course_id/quizzes/:assignment_id`
+    #[cfg(feature = "new-quizzes")]
+    pub async fn get_new_quiz(
+        &self,
+        assignment_id: &str,
+    ) -> Result<crate::resources::new_quiz::NewQuiz> {
+        let mut quiz: crate::resources::new_quiz::NewQuiz = self
+            .req()
+            .nq_get(&format!("courses/{}/quizzes/{assignment_id}", self.id), &[])
+            .await?;
+        quiz.requester = self.requester.clone();
+        quiz.course_id = Some(self.id);
+        Ok(quiz)
+    }
+
+    /// Stream all New Quizzes for this course.
+    ///
+    /// # Canvas API
+    /// `GET /api/quiz/v1/courses/:course_id/quizzes`
+    #[cfg(feature = "new-quizzes")]
+    pub fn get_new_quizzes(&self) -> PageStream<crate::resources::new_quiz::NewQuiz> {
+        let course_id = self.id;
+        PageStream::new_with_injector_nq(
+            Arc::clone(self.req()),
+            &format!("courses/{course_id}/quizzes"),
+            vec![],
+            move |mut q: crate::resources::new_quiz::NewQuiz, req| {
+                q.requester = Some(Arc::clone(&req));
+                q.course_id = Some(course_id);
+                q
+            },
+        )
+    }
+
+    /// Create a New Quiz in this course.
+    ///
+    /// # Canvas API
+    /// `POST /api/quiz/v1/courses/:course_id/quizzes`
+    #[cfg(feature = "new-quizzes")]
+    pub async fn create_new_quiz(
+        &self,
+        params: crate::resources::new_quiz::NewQuizParams,
+    ) -> Result<crate::resources::new_quiz::NewQuiz> {
+        let body = serde_json::to_value(&params).unwrap_or_default();
+        let mut quiz: crate::resources::new_quiz::NewQuiz = self
+            .req()
+            .nq_post(&format!("courses/{}/quizzes", self.id), &body)
+            .await?;
+        quiz.requester = self.requester.clone();
+        quiz.course_id = Some(self.id);
+        Ok(quiz)
     }
 }

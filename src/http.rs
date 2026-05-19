@@ -8,9 +8,7 @@ use url::Url;
 pub(crate) struct Requester {
     pub(crate) client: Client,
     pub(crate) base_url: Url,
-    #[allow(dead_code)] // used in v0.2 new-quizzes feature
     pub(crate) new_quizzes_url: Url,
-    #[allow(dead_code)] // used in v0.2 graphql feature
     pub(crate) graphql_url: Url,
     access_token: String,
 }
@@ -126,6 +124,95 @@ impl Requester {
             .patch(url)
             .header("Authorization", self.auth_header())
             .form(params)
+            .send()
+            .await?;
+        let resp = check_status(resp).await?;
+        Ok(resp.json().await?)
+    }
+
+    // New Quizzes API (`/api/quiz/v1/`) — enabled by the `new-quizzes` feature.
+
+    #[cfg(feature = "new-quizzes")]
+    pub(crate) async fn nq_get<T: DeserializeOwned>(
+        &self,
+        endpoint: &str,
+        params: &[(String, String)],
+    ) -> Result<T> {
+        let url = self.new_quizzes_url.join(endpoint)?;
+        let resp = self.get_raw(url, params).await?;
+        Ok(resp.json().await?)
+    }
+
+    #[cfg(feature = "new-quizzes")]
+    pub(crate) async fn nq_post<T: DeserializeOwned>(
+        &self,
+        endpoint: &str,
+        body: &serde_json::Value,
+    ) -> Result<T> {
+        let url = self.new_quizzes_url.join(endpoint)?;
+        info!("POST (NQ) {url}");
+        let resp = self
+            .client
+            .post(url)
+            .header("Authorization", self.auth_header())
+            .json(body)
+            .send()
+            .await?;
+        let resp = check_status(resp).await?;
+        Ok(resp.json().await?)
+    }
+
+    #[cfg(feature = "new-quizzes")]
+    pub(crate) async fn nq_patch<T: DeserializeOwned>(
+        &self,
+        endpoint: &str,
+        body: &serde_json::Value,
+    ) -> Result<T> {
+        let url = self.new_quizzes_url.join(endpoint)?;
+        info!("PATCH (NQ) {url}");
+        let resp = self
+            .client
+            .patch(url)
+            .header("Authorization", self.auth_header())
+            .json(body)
+            .send()
+            .await?;
+        let resp = check_status(resp).await?;
+        Ok(resp.json().await?)
+    }
+
+    #[cfg(feature = "new-quizzes")]
+    pub(crate) async fn nq_delete<T: DeserializeOwned>(&self, endpoint: &str) -> Result<T> {
+        let url = self.new_quizzes_url.join(endpoint)?;
+        info!("DELETE (NQ) {url}");
+        let resp = self
+            .client
+            .delete(url)
+            .header("Authorization", self.auth_header())
+            .send()
+            .await?;
+        let resp = check_status(resp).await?;
+        Ok(resp.json().await?)
+    }
+
+    // GraphQL API — enabled by the `graphql` feature.
+
+    #[cfg(feature = "graphql")]
+    pub(crate) async fn graphql_query(
+        &self,
+        query: &str,
+        variables: Option<serde_json::Value>,
+    ) -> Result<serde_json::Value> {
+        let body = serde_json::json!({
+            "query": query,
+            "variables": variables.unwrap_or(serde_json::Value::Null)
+        });
+        info!("POST (GraphQL) {}", self.graphql_url);
+        let resp = self
+            .client
+            .post(self.graphql_url.clone())
+            .header("Authorization", self.auth_header())
+            .json(&body)
             .send()
             .await?;
         let resp = check_status(resp).await?;

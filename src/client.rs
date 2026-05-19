@@ -6,6 +6,7 @@ use crate::{
     resources::{
         account::Account,
         course::Course,
+        outcome::Outcome,
         params::{course_params::CreateCourseParams, user_params::CreateUserParams},
         user::{CurrentUser, User, UserId},
     },
@@ -169,6 +170,19 @@ impl Canvas {
         Ok(account)
     }
 
+    /// Fetch a single outcome by ID.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/outcomes/:id`
+    pub async fn get_outcome(&self, outcome_id: u64) -> Result<Outcome> {
+        let mut outcome: Outcome = self
+            .requester
+            .get(&format!("outcomes/{outcome_id}"), &[])
+            .await?;
+        outcome.requester = Some(Arc::clone(&self.requester));
+        Ok(outcome)
+    }
+
     /// Stream all accounts accessible to the authenticated user.
     ///
     /// # Canvas API
@@ -183,6 +197,27 @@ impl Canvas {
                 a
             },
         )
+    }
+
+    // -------------------------------------------------------------------------
+    // GraphQL (feature = "graphql")
+    // -------------------------------------------------------------------------
+
+    /// Return a [`GraphQL`][crate::graphql::GraphQL] client for this Canvas instance.
+    ///
+    /// # Example
+    /// ```no_run
+    /// # #[tokio::main] async fn main() -> canvas_lms_api::Result<()> {
+    /// let canvas = canvas_lms_api::Canvas::new("https://canvas.example.edu", "token")?;
+    /// let gql = canvas.graphql();
+    /// let res = gql.query("{ allCourses { id name } }", None).await?;
+    /// # Ok(()) }
+    /// ```
+    #[cfg(feature = "graphql")]
+    pub fn graphql(&self) -> crate::graphql::GraphQL {
+        crate::graphql::GraphQL {
+            requester: Arc::clone(&self.requester),
+        }
     }
 }
 

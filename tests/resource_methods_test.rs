@@ -490,3 +490,572 @@ async fn test_content_migration_get_issues() {
     assert_eq!(issues.len(), 2);
     assert_eq!(issues[0].id, 1);
 }
+
+// ---- Rubric::update ----
+
+#[tokio::test]
+async fn test_rubric_update() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({"id": 1})))
+        .mount(&server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/rubrics/3"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 3, "title": "Essay Rubric", "course_id": 1
+        })))
+        .mount(&server)
+        .await;
+    Mock::given(method("PUT"))
+        .and(path("/api/v1/courses/1/rubrics/3"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 3, "title": "Updated Rubric", "course_id": 1
+        })))
+        .mount(&server)
+        .await;
+
+    let canvas = Canvas::new(&server.uri(), "test-token").unwrap();
+    let rubric = canvas
+        .get_course(1)
+        .await
+        .unwrap()
+        .get_rubric(3)
+        .await
+        .unwrap();
+    let updated = rubric
+        .update(canvas_lms_api::resources::rubric::RubricParams {
+            title: Some("Updated Rubric".to_string()),
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+    assert_eq!(updated.title.as_deref(), Some("Updated Rubric"));
+}
+
+// ---- RubricAssociation and RubricAssessment ----
+
+async fn make_rubric_association(
+    server: &MockServer,
+) -> canvas_lms_api::resources::rubric::RubricAssociation {
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({"id": 1})))
+        .mount(server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/rubric_associations/7"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 7, "rubric_id": 3, "association_id": 1, "association_type": "Course", "course_id": 1
+        })))
+        .mount(server)
+        .await;
+    let canvas = Canvas::new(&server.uri(), "test-token").unwrap();
+    canvas
+        .get_course(1)
+        .await
+        .unwrap()
+        .get_rubric_association(7)
+        .await
+        .unwrap()
+}
+
+#[tokio::test]
+async fn test_rubric_association_delete() {
+    let server = MockServer::start().await;
+    let assoc = make_rubric_association(&server).await;
+
+    Mock::given(method("DELETE"))
+        .and(path("/api/v1/courses/1/rubric_associations/7"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 7, "rubric_id": 3, "course_id": 1
+        })))
+        .mount(&server)
+        .await;
+
+    let deleted = assoc.delete().await.unwrap();
+    assert_eq!(deleted.id, 7);
+}
+
+#[tokio::test]
+async fn test_rubric_association_update() {
+    let server = MockServer::start().await;
+    let assoc = make_rubric_association(&server).await;
+
+    Mock::given(method("PUT"))
+        .and(path("/api/v1/courses/1/rubric_associations/7"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 7, "rubric_id": 3, "course_id": 1, "use_for_grading": true
+        })))
+        .mount(&server)
+        .await;
+
+    let params = vec![(
+        "rubric_association[use_for_grading]".to_string(),
+        "true".to_string(),
+    )];
+    let updated = assoc.update(&params).await.unwrap();
+    assert_eq!(updated.use_for_grading, Some(true));
+}
+
+#[tokio::test]
+async fn test_rubric_assessment_create_and_delete() {
+    let server = MockServer::start().await;
+    let assoc = make_rubric_association(&server).await;
+
+    Mock::given(method("POST"))
+        .and(path(
+            "/api/v1/courses/1/rubric_associations/7/rubric_assessments",
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 99, "rubric_id": 3, "rubric_association_id": 7, "score": 10.0, "course_id": 1
+        })))
+        .mount(&server)
+        .await;
+    Mock::given(method("DELETE"))
+        .and(path(
+            "/api/v1/courses/1/rubric_associations/7/rubric_assessments/99",
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 99, "rubric_association_id": 7, "score": 10.0, "course_id": 1
+        })))
+        .mount(&server)
+        .await;
+
+    let params = vec![("rubric_assessment[score]".to_string(), "10".to_string())];
+    let assessment = assoc.create_rubric_assessment(&params).await.unwrap();
+    assert_eq!(assessment.id, 99);
+    assert_eq!(assessment.score, Some(10.0));
+
+    let deleted = assessment.delete().await.unwrap();
+    assert_eq!(deleted.id, 99);
+}
+
+#[tokio::test]
+async fn test_rubric_assessment_update() {
+    let server = MockServer::start().await;
+    let assoc = make_rubric_association(&server).await;
+
+    Mock::given(method("POST"))
+        .and(path(
+            "/api/v1/courses/1/rubric_associations/7/rubric_assessments",
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 100, "rubric_id": 3, "rubric_association_id": 7, "score": 8.0, "course_id": 1
+        })))
+        .mount(&server)
+        .await;
+    Mock::given(method("PUT"))
+        .and(path(
+            "/api/v1/courses/1/rubric_associations/7/rubric_assessments/100",
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 100, "rubric_association_id": 7, "score": 9.5, "course_id": 1
+        })))
+        .mount(&server)
+        .await;
+
+    let params = vec![("rubric_assessment[score]".to_string(), "8".to_string())];
+    let assessment = assoc.create_rubric_assessment(&params).await.unwrap();
+
+    let update_params = vec![("rubric_assessment[score]".to_string(), "9.5".to_string())];
+    let updated = assessment.update(&update_params).await.unwrap();
+    assert_eq!(updated.score, Some(9.5));
+}
+
+// ---- BlueprintTemplate remaining methods ----
+
+#[tokio::test]
+async fn test_blueprint_get_migration() {
+    let server = MockServer::start().await;
+    let tmpl = make_blueprint(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path(
+            "/api/v1/courses/1/blueprint_templates/1/migrations/42",
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 42, "template_id": 1, "course_id": 1, "workflow_state": "completed"
+        })))
+        .mount(&server)
+        .await;
+
+    let migration = tmpl.get_migration(42).await.unwrap();
+    assert_eq!(migration.id, 42);
+    assert_eq!(migration.workflow_state.as_deref(), Some("completed"));
+}
+
+#[tokio::test]
+async fn test_blueprint_get_unsynced_changes() {
+    let server = MockServer::start().await;
+    let tmpl = make_blueprint(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path(
+            "/api/v1/courses/1/blueprint_templates/1/unsynced_changes",
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"asset_id": 10, "asset_type": "assignment", "asset_name": "HW 1", "change_type": "updated"},
+            {"asset_id": 11, "asset_type": "quiz", "asset_name": "Quiz 1", "change_type": "created"}
+        ])))
+        .mount(&server)
+        .await;
+
+    let changes = tmpl.get_unsynced_changes().collect_all().await.unwrap();
+    assert_eq!(changes.len(), 2);
+    assert_eq!(changes[0].asset_type.as_deref(), Some("assignment"));
+}
+
+#[tokio::test]
+async fn test_blueprint_get_associated_courses() {
+    let server = MockServer::start().await;
+    let tmpl = make_blueprint(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path(
+            "/api/v1/courses/1/blueprint_templates/1/associated_courses",
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"id": 5, "name": "Child Course A"},
+            {"id": 6, "name": "Child Course B"}
+        ])))
+        .mount(&server)
+        .await;
+
+    let courses = tmpl.get_associated_courses().collect_all().await.unwrap();
+    assert_eq!(courses.len(), 2);
+    assert_eq!(courses[0]["id"], 5);
+}
+
+#[tokio::test]
+async fn test_blueprint_update_associated_courses() {
+    let server = MockServer::start().await;
+    let tmpl = make_blueprint(&server).await;
+
+    Mock::given(method("PUT"))
+        .and(path(
+            "/api/v1/courses/1/blueprint_templates/1/update_associations",
+        ))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_json(serde_json::json!({"success": true})),
+        )
+        .mount(&server)
+        .await;
+
+    let params = vec![("course_ids_to_add[]".to_string(), "7".to_string())];
+    let ok = tmpl.update_associated_courses(&params).await.unwrap();
+    assert!(ok);
+}
+
+#[tokio::test]
+async fn test_blueprint_migration_get_details() {
+    let server = MockServer::start().await;
+    let tmpl = make_blueprint(&server).await;
+
+    Mock::given(method("POST"))
+        .and(path("/api/v1/courses/1/blueprint_templates/1/migrations"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 10, "template_id": 1, "course_id": 1, "workflow_state": "completed"
+        })))
+        .mount(&server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path(
+            "/api/v1/courses/1/blueprint_templates/1/migrations/10/details",
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"asset_id": 20, "asset_type": "page", "asset_name": "Syllabus", "change_type": "updated"}
+        ])))
+        .mount(&server)
+        .await;
+
+    let migration = tmpl.start_migration().await.unwrap();
+    let details = migration.get_details().collect_all().await.unwrap();
+    assert_eq!(details.len(), 1);
+    assert_eq!(details[0].asset_type.as_deref(), Some("page"));
+}
+
+#[tokio::test]
+async fn test_blueprint_subscription_get_imports() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/2"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({"id": 2})))
+        .mount(&server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/2/blueprint_subscriptions"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"id": 5, "template_id": 1, "course_id": 2}
+        ])))
+        .mount(&server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/2/blueprint_subscriptions/5/migrations"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"id": 10, "template_id": 1, "subscription_id": 5, "course_id": 2, "workflow_state": "completed"},
+            {"id": 11, "template_id": 1, "subscription_id": 5, "course_id": 2, "workflow_state": "completed"}
+        ])))
+        .mount(&server)
+        .await;
+
+    let canvas = Canvas::new(&server.uri(), "test-token").unwrap();
+    let subs = canvas
+        .get_course(2)
+        .await
+        .unwrap()
+        .get_blueprint_subscriptions()
+        .collect_all()
+        .await
+        .unwrap();
+    assert_eq!(subs.len(), 1);
+
+    let imports = subs[0].get_imports().collect_all().await.unwrap();
+    assert_eq!(imports.len(), 2);
+    assert_eq!(imports[0].id, 10);
+}
+
+#[tokio::test]
+async fn test_blueprint_subscription_get_import() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/2"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({"id": 2})))
+        .mount(&server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/2/blueprint_subscriptions"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"id": 5, "template_id": 1, "course_id": 2}
+        ])))
+        .mount(&server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path(
+            "/api/v1/courses/2/blueprint_subscriptions/5/migrations/10",
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 10, "template_id": 1, "subscription_id": 5, "course_id": 2, "workflow_state": "completed"
+        })))
+        .mount(&server)
+        .await;
+
+    let canvas = Canvas::new(&server.uri(), "test-token").unwrap();
+    let subs = canvas
+        .get_course(2)
+        .await
+        .unwrap()
+        .get_blueprint_subscriptions()
+        .collect_all()
+        .await
+        .unwrap();
+    let import = subs[0].get_import(10).await.unwrap();
+    assert_eq!(import.id, 10);
+    assert_eq!(import.workflow_state.as_deref(), Some("completed"));
+}
+
+// ---- OutcomeGroup remaining methods ----
+
+async fn make_outcome_group_course(
+    server: &MockServer,
+) -> canvas_lms_api::resources::outcome::OutcomeGroup {
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({"id": 1})))
+        .mount(server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/outcome_groups/20"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 20, "title": "Core Skills", "context_id": 1, "context_type": "Course"
+        })))
+        .mount(server)
+        .await;
+    let canvas = Canvas::new(&server.uri(), "test-token").unwrap();
+    canvas
+        .get_course(1)
+        .await
+        .unwrap()
+        .get_outcome_group(20)
+        .await
+        .unwrap()
+}
+
+#[tokio::test]
+async fn test_outcome_group_delete() {
+    let server = MockServer::start().await;
+    let group = make_outcome_group_course(&server).await;
+
+    Mock::given(method("DELETE"))
+        .and(path("/api/v1/courses/1/outcome_groups/20"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 20, "title": "Core Skills", "context_id": 1, "context_type": "Course"
+        })))
+        .mount(&server)
+        .await;
+
+    let deleted = group.delete().await.unwrap();
+    assert_eq!(deleted.id, 20);
+}
+
+#[tokio::test]
+async fn test_outcome_group_get_subgroups() {
+    let server = MockServer::start().await;
+    let group = make_outcome_group_course(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/outcome_groups/20/subgroups"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"id": 21, "title": "Sub A", "context_id": 1, "context_type": "Course"},
+            {"id": 22, "title": "Sub B", "context_id": 1, "context_type": "Course"}
+        ])))
+        .mount(&server)
+        .await;
+
+    let subs = group.get_subgroups().collect_all().await.unwrap();
+    assert_eq!(subs.len(), 2);
+    assert_eq!(subs[0].id, 21);
+}
+
+#[tokio::test]
+async fn test_outcome_group_get_linked_outcomes() {
+    let server = MockServer::start().await;
+    let group = make_outcome_group_course(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/outcome_groups/20/outcomes"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"context_id": 1, "context_type": "Course", "outcome": {"id": 5, "title": "Outcome A"}},
+            {"context_id": 1, "context_type": "Course", "outcome": {"id": 6, "title": "Outcome B"}}
+        ])))
+        .mount(&server)
+        .await;
+
+    let links = group.get_linked_outcomes().collect_all().await.unwrap();
+    assert_eq!(links.len(), 2);
+}
+
+#[tokio::test]
+async fn test_outcome_group_link_outcome() {
+    let server = MockServer::start().await;
+    let group = make_outcome_group_course(&server).await;
+
+    Mock::given(method("PUT"))
+        .and(path("/api/v1/courses/1/outcome_groups/20/outcomes/5"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "context_id": 1, "context_type": "Course", "outcome": {"id": 5, "title": "Outcome A"}
+        })))
+        .mount(&server)
+        .await;
+
+    let link = group.link_outcome(5).await.unwrap();
+    assert_eq!(link.context_id, Some(1));
+}
+
+#[tokio::test]
+async fn test_outcome_group_unlink_outcome() {
+    let server = MockServer::start().await;
+    let group = make_outcome_group_course(&server).await;
+
+    Mock::given(method("DELETE"))
+        .and(path("/api/v1/courses/1/outcome_groups/20/outcomes/5"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "context_id": 1, "context_type": "Course", "outcome": {"id": 5, "title": "Outcome A"}
+        })))
+        .mount(&server)
+        .await;
+
+    let link = group.unlink_outcome(5).await.unwrap();
+    assert_eq!(link.context_id, Some(1));
+}
+
+// ---- Outcome::update ----
+
+#[tokio::test]
+async fn test_outcome_update() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/outcomes/5"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 5, "title": "Original Title", "context_id": 1, "context_type": "Course"
+        })))
+        .mount(&server)
+        .await;
+    Mock::given(method("PUT"))
+        .and(path("/api/v1/outcomes/5"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 5, "title": "Updated Title", "context_id": 1, "context_type": "Course"
+        })))
+        .mount(&server)
+        .await;
+
+    let canvas = Canvas::new(&server.uri(), "test-token").unwrap();
+    let outcome = canvas.get_outcome(5).await.unwrap();
+    let updated = outcome
+        .update(canvas_lms_api::resources::outcome::UpdateOutcomeParams {
+            title: Some("Updated Title".to_string()),
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+    assert_eq!(updated.title.as_deref(), Some("Updated Title"));
+}
+
+// ---- ContentMigration::update ----
+
+#[tokio::test]
+async fn test_content_migration_update() {
+    let server = MockServer::start().await;
+    let migration = make_content_migration(&server).await;
+
+    Mock::given(method("PUT"))
+        .and(path("/api/v1/courses/1/content_migrations/99"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 99, "course_id": 1, "migration_type": "common_cartridge_importer",
+            "workflow_state": "running"
+        })))
+        .mount(&server)
+        .await;
+
+    let params = vec![("workflow_state".to_string(), "running".to_string())];
+    let updated = migration.update(&params).await.unwrap();
+    assert_eq!(updated.id, 99);
+    assert_eq!(updated.workflow_state.as_deref(), Some("running"));
+}
+
+// ---- MigrationIssue::update ----
+
+#[tokio::test]
+async fn test_migration_issue_update() {
+    let server = MockServer::start().await;
+    let migration = make_content_migration(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path(
+            "/api/v1/courses/1/content_migrations/99/migration_issues/1",
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 1, "workflow_state": "active", "issue_type": "warning",
+            "content_migration_url": "/api/v1/courses/1/content_migrations/99"
+        })))
+        .mount(&server)
+        .await;
+    Mock::given(method("PUT"))
+        .and(path(
+            "/api/v1/courses/1/content_migrations/99/migration_issues/1",
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 1, "workflow_state": "resolved", "issue_type": "warning",
+            "content_migration_url": "/api/v1/courses/1/content_migrations/99"
+        })))
+        .mount(&server)
+        .await;
+
+    let issue = migration.get_migration_issue(1).await.unwrap();
+    let resolved = issue.update("resolved").await.unwrap();
+    assert_eq!(resolved.workflow_state.as_deref(), Some("resolved"));
+}

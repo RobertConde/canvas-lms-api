@@ -749,3 +749,102 @@ async fn test_get_outcome_group_on_course() {
     assert_eq!(group.id, 20);
     assert_eq!(group.title.as_deref(), Some("Writing Skills"));
 }
+
+// ---- Gradebook History ----
+
+#[tokio::test]
+async fn test_get_gradebook_history_dates() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/gradebook_history/days"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"date": "2026-05-01", "graders": 3},
+            {"date": "2026-05-02", "graders": 2}
+        ])))
+        .mount(&server)
+        .await;
+
+    let days = course
+        .get_gradebook_history_dates()
+        .collect_all()
+        .await
+        .unwrap();
+    assert_eq!(days.len(), 2);
+    assert_eq!(days[0].date.as_deref(), Some("2026-05-01"));
+    assert_eq!(days[0].graders, Some(3));
+}
+
+#[tokio::test]
+async fn test_get_gradebook_history_details() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/gradebook_history/2026-05-01"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"id": 42, "name": "Prof. Smith"},
+            {"id": 43, "name": "Prof. Jones"}
+        ])))
+        .mount(&server)
+        .await;
+
+    let graders = course
+        .get_gradebook_history_details("2026-05-01")
+        .collect_all()
+        .await
+        .unwrap();
+    assert_eq!(graders.len(), 2);
+    assert_eq!(graders[0].id, Some(42));
+    assert_eq!(graders[0].name.as_deref(), Some("Prof. Smith"));
+}
+
+#[tokio::test]
+async fn test_get_submission_history() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path(
+            "/api/v1/courses/1/gradebook_history/2026-05-01/graders/42/assignments/10/submissions",
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"submission_id": 101, "versions": []},
+            {"submission_id": 102, "versions": []}
+        ])))
+        .mount(&server)
+        .await;
+
+    let history = course
+        .get_submission_history("2026-05-01", 42, 10)
+        .collect_all()
+        .await
+        .unwrap();
+    assert_eq!(history.len(), 2);
+    assert_eq!(history[0].submission_id, Some(101));
+}
+
+#[tokio::test]
+async fn test_get_uncollated_submissions() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/gradebook_history/feed"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"id": 1, "assignment_id": 10, "user_id": 99, "grade": "A"},
+            {"id": 2, "assignment_id": 11, "user_id": 99, "grade": "B+"}
+        ])))
+        .mount(&server)
+        .await;
+
+    let versions = course
+        .get_uncollated_submissions()
+        .collect_all()
+        .await
+        .unwrap();
+    assert_eq!(versions.len(), 2);
+    assert_eq!(versions[0].assignment_id, Some(10));
+    assert_eq!(versions[0].grade.as_deref(), Some("A"));
+}

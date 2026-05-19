@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-05-19
+
+### Fixed
+- README badges: correct CI URL casing, switch docs badge to shields.io
+
 ## [0.1.1] - 2026-05-19
 
 ### Fixed

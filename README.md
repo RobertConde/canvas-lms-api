@@ -12,12 +12,10 @@ A Rust client for the [Instructure Canvas LMS REST API](https://canvas.instructu
 [dependencies]
 canvas-lms-api = "0.3"
 tokio = { version = "1", features = ["full"] }
-futures = "0.3"
 ```
 
 ```rust
 use canvas_lms_api::Canvas;
-use futures::StreamExt;
 
 #[tokio::main]
 async fn main() -> canvas_lms_api::Result<()> {
@@ -27,10 +25,9 @@ async fn main() -> canvas_lms_api::Result<()> {
     let course = canvas.get_course(123).await?;
     println!("Course: {}", course.name.unwrap_or_default());
 
-    // Stream all assignments (lazy, page by page)
-    let mut assignments = course.get_assignments();
-    while let Some(result) = assignments.next().await {
-        let a = result?;
+    // Collect all assignments for the course
+    let assignments = course.get_assignments().collect_all().await?;
+    for a in assignments {
         println!("  Assignment: {}", a.name.unwrap_or_default());
     }
 
@@ -61,6 +58,16 @@ JWT, Outcome / OutcomeGroup, Planner (Note + Override), Role, Rubric,
 SisImport
 
 **Feature-gated:** NewQuiz (`new-quizzes`), GraphQL queries (`graphql`)
+
+## Examples
+
+Runnable example programs live in [`examples/`](examples/). Each is a standalone Cargo project.
+
+| Example | Description |
+|---------|-------------|
+| [`list-courses-and-assignments`](examples/list-courses-and-assignments) | List all your courses and their assignments |
+
+More examples to come.
 
 ## Access tokens
 

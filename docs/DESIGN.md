@@ -266,10 +266,21 @@ Account calendars, Blueprints, Content migrations, Outcome groups, Rubrics,
 Gradebook history, SIS imports, New Quizzes (`new-quizzes` feature),
 External tools, Communication channels
 
-### v0.3.0
-Polls, ePortfolios, Planner, Conversations, Collaborations, LTI resource links,
-JWT, Grade change logs, remaining ~30 types.
-Possibly a `#[derive(CanvasResource)]` proc-macro to reduce boilerplate.
+### v0.3.0 (shipped)
+AppointmentGroup, CalendarEvent, Conversation, EnrollmentTerm, EPortfolio/EPortfolioPage,
+GradingPeriod, GradingStandard, JWT, ContentExport, GradeChangeLog, Feature/FeatureFlag,
+PlannerNote/PlannerOverride, Role. 214 tests, 0 clippy warnings.
+
+### v0.4.0
+- Polls (`Poll`, `PollChoice`, `PollSession`, `PollSubmission`) with full CRUD
+- Collaborations: list/get/create on courses and groups
+- LTI resource links: course-scoped list/create
+- `impl futures::Stream for PageStream<T>` — lazy page-by-page iteration via `StreamExt`
+  (`next()`, `map()`, `filter()`, etc.) without collecting everything upfront
+- Struct-level mutation tests for second-order objects (implemented but untested):
+  Rubric, RubricAssociation, RubricAssessment, OutcomeGroup, ContentMigration,
+  MigrationIssue, SisImport, Blueprint types
+- `#[derive(CanvasResource)]` proc-macro to reduce `Arc<Requester>` injection boilerplate
 
 ### v1.0.0
 Full API surface. Semver stability guarantee. MSRV policy pinned to N-2 stable.

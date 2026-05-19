@@ -1,3 +1,7 @@
+[workspace]
+members = [".", "examples/list-courses-and-assignments"]
+resolver = "2"
+
 [package]
 name = "canvas-lms-api"
 version = "0.3.0"

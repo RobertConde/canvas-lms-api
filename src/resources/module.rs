@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
+/// A Canvas course module (a collection of ordered content items).
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Module {
     pub id: u64,
@@ -18,6 +19,7 @@ pub struct Module {
     pub published: Option<bool>,
 }
 
+/// An individual item within a Canvas module.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ModuleItem {
     pub id: u64,
@@ -36,6 +38,7 @@ pub struct ModuleItem {
     pub published: Option<bool>,
 }
 
+/// Completion requirement for a module item.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct CompletionRequirement {
     #[serde(rename = "type")]

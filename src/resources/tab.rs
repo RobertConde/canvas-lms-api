@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+/// A navigation tab in a Canvas course or account.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Tab {
     pub id: Option<String>,

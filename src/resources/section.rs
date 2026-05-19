@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
+/// A section within a Canvas course.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Section {
     pub id: u64,

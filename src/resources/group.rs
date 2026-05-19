@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+/// A Canvas group within a course or account.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Group {
     pub id: u64,

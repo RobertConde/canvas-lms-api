@@ -2,6 +2,7 @@ use crate::resources::types::{EnrollmentType, WorkflowState};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
+/// A Canvas enrollment — the relationship between a user and a course section.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Enrollment {
     pub id: u64,
@@ -22,6 +23,7 @@ pub struct Enrollment {
     pub grades: Option<EnrollmentGrades>,
 }
 
+/// Grade summary for an enrollment.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct EnrollmentGrades {
     pub html_url: Option<String>,

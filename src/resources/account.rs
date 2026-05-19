@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+/// A Canvas account (institution, sub-account, or department).
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Account {
     pub id: u64,

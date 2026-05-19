@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
+/// A Canvas wiki page within a course or group.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Page {
     pub page_id: Option<u64>,

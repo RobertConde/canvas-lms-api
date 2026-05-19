@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
+/// A Canvas quiz.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Quiz {
     pub id: u64,

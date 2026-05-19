@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
+/// A file stored in Canvas.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct File {
     pub id: u64,

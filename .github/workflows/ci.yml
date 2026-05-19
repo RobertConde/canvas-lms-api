@@ -17,6 +17,7 @@ jobs:
     strategy:
       matrix:
         features:
+          - ""
           - "--features full"
           - "--no-default-features --features blocking"
     steps:
@@ -37,6 +38,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         continue-on-error: true
       - run: cargo fmt --check
+      - run: cargo clippy -- -D warnings
       - run: cargo clippy --features full -- -D warnings
 
   docs:

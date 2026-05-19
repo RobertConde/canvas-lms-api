@@ -161,9 +161,12 @@ impl Canvas {
     /// # Canvas API
     /// `GET /api/v1/accounts/:id`
     pub async fn get_account(&self, account_id: u64) -> Result<Account> {
-        self.requester
+        let mut account: Account = self
+            .requester
             .get(&format!("accounts/{account_id}"), &[])
-            .await
+            .await?;
+        account.requester = Some(Arc::clone(&self.requester));
+        Ok(account)
     }
 
     /// Stream all accounts accessible to the authenticated user.
@@ -171,7 +174,15 @@ impl Canvas {
     /// # Canvas API
     /// `GET /api/v1/accounts`
     pub fn get_accounts(&self) -> PageStream<Account> {
-        PageStream::new(Arc::clone(&self.requester), "accounts", vec![])
+        PageStream::new_with_injector(
+            Arc::clone(&self.requester),
+            "accounts",
+            vec![],
+            |mut a: Account, req| {
+                a.requester = Some(Arc::clone(&req));
+                a
+            },
+        )
     }
 }
 

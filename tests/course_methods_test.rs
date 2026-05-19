@@ -1,6 +1,8 @@
+use canvas_lms_api::resources::external_tool::ExternalToolParams;
 use canvas_lms_api::resources::params::assignment_params::CreateAssignmentParams;
 use canvas_lms_api::resources::params::course_params::UpdateCourseParams;
 use canvas_lms_api::resources::params::quiz_params::CreateQuizParams;
+use canvas_lms_api::resources::rubric::RubricParams;
 use canvas_lms_api::Canvas;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
@@ -463,4 +465,287 @@ async fn test_get_groups() {
 
     assert_eq!(groups.len(), 2);
     assert_eq!(groups[0].id, 301);
+}
+// ---- External Tools ----
+
+#[tokio::test]
+async fn test_get_external_tool_on_course() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/external_tools/5"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 5,
+            "name": "Canvas Studio",
+            "course_id": 1
+        })))
+        .mount(&server)
+        .await;
+
+    let tool = course.get_external_tool(5).await.unwrap();
+    assert_eq!(tool.id, 5);
+    assert_eq!(tool.name.as_deref(), Some("Canvas Studio"));
+}
+
+#[tokio::test]
+async fn test_get_external_tools_on_course() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/external_tools"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"id": 5, "name": "Tool A", "course_id": 1},
+            {"id": 6, "name": "Tool B", "course_id": 1}
+        ])))
+        .mount(&server)
+        .await;
+
+    let tools = course.get_external_tools().collect_all().await.unwrap();
+    assert_eq!(tools.len(), 2);
+    assert_eq!(tools[0].id, 5);
+}
+
+#[tokio::test]
+async fn test_create_external_tool_on_course() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("POST"))
+        .and(path("/api/v1/courses/1/external_tools"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 7,
+            "name": "New Tool",
+            "course_id": 1
+        })))
+        .mount(&server)
+        .await;
+
+    let params = ExternalToolParams {
+        name: Some("New Tool".to_string()),
+        ..Default::default()
+    };
+    let tool = course.create_external_tool(params).await.unwrap();
+    assert_eq!(tool.id, 7);
+    assert_eq!(tool.name.as_deref(), Some("New Tool"));
+}
+
+// ---- Rubrics ----
+
+#[tokio::test]
+async fn test_get_rubric_on_course() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/rubrics/3"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 3,
+            "title": "Essay Rubric",
+            "course_id": 1
+        })))
+        .mount(&server)
+        .await;
+
+    let rubric = course.get_rubric(3).await.unwrap();
+    assert_eq!(rubric.id, 3);
+    assert_eq!(rubric.title.as_deref(), Some("Essay Rubric"));
+}
+
+#[tokio::test]
+async fn test_get_rubrics_on_course() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/rubrics"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"id": 3, "title": "Rubric A", "course_id": 1},
+            {"id": 4, "title": "Rubric B", "course_id": 1}
+        ])))
+        .mount(&server)
+        .await;
+
+    let rubrics = course.get_rubrics().collect_all().await.unwrap();
+    assert_eq!(rubrics.len(), 2);
+    assert_eq!(rubrics[0].id, 3);
+}
+
+#[tokio::test]
+async fn test_create_rubric_on_course() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("POST"))
+        .and(path("/api/v1/courses/1/rubrics"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 10,
+            "title": "New Rubric",
+            "course_id": 1
+        })))
+        .mount(&server)
+        .await;
+
+    let params = RubricParams {
+        title: Some("New Rubric".to_string()),
+        ..Default::default()
+    };
+    let rubric = course.create_rubric(params).await.unwrap();
+    assert_eq!(rubric.id, 10);
+    assert_eq!(rubric.title.as_deref(), Some("New Rubric"));
+}
+
+// ---- Blueprint ----
+
+#[tokio::test]
+async fn test_get_blueprint() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/blueprint_templates/default"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 1,
+            "course_id": 1,
+            "associated_course_count": 5
+        })))
+        .mount(&server)
+        .await;
+
+    let tmpl = course.get_blueprint("default").await.unwrap();
+    assert_eq!(tmpl.id, 1);
+    assert_eq!(tmpl.associated_course_count, Some(5));
+}
+
+#[tokio::test]
+async fn test_get_blueprint_subscriptions() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/blueprint_subscriptions"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"id": 10, "template_id": 1, "course_id": 1}
+        ])))
+        .mount(&server)
+        .await;
+
+    let subs = course
+        .get_blueprint_subscriptions()
+        .collect_all()
+        .await
+        .unwrap();
+    assert_eq!(subs.len(), 1);
+    assert_eq!(subs[0].id, 10);
+}
+
+// ---- Content Migrations ----
+
+#[tokio::test]
+async fn test_get_content_migration_on_course() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/content_migrations/99"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 99,
+            "course_id": 1,
+            "migration_type": "common_cartridge_importer",
+            "workflow_state": "completed"
+        })))
+        .mount(&server)
+        .await;
+
+    let migration = course.get_content_migration(99).await.unwrap();
+    assert_eq!(migration.id, 99);
+    assert_eq!(migration.workflow_state.as_deref(), Some("completed"));
+}
+
+#[tokio::test]
+async fn test_get_content_migrations_on_course() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/content_migrations"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"id": 1, "course_id": 1, "migration_type": "common_cartridge_importer", "workflow_state": "completed"}
+        ])))
+        .mount(&server)
+        .await;
+
+    let migrations = course.get_content_migrations().collect_all().await.unwrap();
+    assert_eq!(migrations.len(), 1);
+    assert_eq!(migrations[0].id, 1);
+}
+
+#[tokio::test]
+async fn test_create_content_migration_on_course() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("POST"))
+        .and(path("/api/v1/courses/1/content_migrations"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 100,
+            "course_id": 1,
+            "migration_type": "common_cartridge_importer",
+            "workflow_state": "pre_processing"
+        })))
+        .mount(&server)
+        .await;
+
+    let migration = course
+        .create_content_migration("common_cartridge_importer", &[])
+        .await
+        .unwrap();
+    assert_eq!(migration.id, 100);
+    assert_eq!(migration.workflow_state.as_deref(), Some("pre_processing"));
+}
+
+// ---- Outcome Groups ----
+
+#[tokio::test]
+async fn test_get_outcome_group_links_on_course() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/outcome_group_links"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"context_id": 1, "context_type": "Course"},
+            {"context_id": 1, "context_type": "Course"}
+        ])))
+        .mount(&server)
+        .await;
+
+    let links = course
+        .get_outcome_group_links()
+        .collect_all()
+        .await
+        .unwrap();
+    assert_eq!(links.len(), 2);
+}
+
+#[tokio::test]
+async fn test_get_outcome_group_on_course() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/outcome_groups/20"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 20,
+            "title": "Writing Skills",
+            "context_id": 1,
+            "context_type": "Course"
+        })))
+        .mount(&server)
+        .await;
+
+    let group = course.get_outcome_group(20).await.unwrap();
+    assert_eq!(group.id, 20);
+    assert_eq!(group.title.as_deref(), Some("Writing Skills"));
 }

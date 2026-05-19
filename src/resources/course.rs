@@ -5,17 +5,22 @@ use crate::{
     params::wrap_params,
     resources::{
         assignment::Assignment,
+        blueprint::{BlueprintSubscription, BlueprintTemplate},
+        content_migration::{ContentMigration, Migrator},
         discussion_topic::DiscussionTopic,
         enrollment::Enrollment,
+        external_tool::{ExternalTool, ExternalToolParams},
         file::File,
         group::Group,
         module::Module,
+        outcome::{OutcomeGroup, OutcomeLink, UpdateOutcomeGroupParams},
         page::Page,
         params::{
             assignment_params::CreateAssignmentParams, course_params::UpdateCourseParams,
             quiz_params::CreateQuizParams,
         },
         quiz::Quiz,
+        rubric::{Rubric, RubricParams},
         section::Section,
         tab::Tab,
         types::WorkflowState,
@@ -327,5 +332,260 @@ impl Course {
             data,
         )
         .await
+    }
+
+    // -------------------------------------------------------------------------
+    // External Tools
+    // -------------------------------------------------------------------------
+
+    /// Fetch a single external tool by ID.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/external_tools/:id`
+    pub async fn get_external_tool(&self, tool_id: u64) -> Result<ExternalTool> {
+        let mut tool: ExternalTool = self
+            .req()
+            .get(
+                &format!("courses/{}/external_tools/{tool_id}", self.id),
+                &[],
+            )
+            .await?;
+        tool.requester = self.requester.clone();
+        Ok(tool)
+    }
+
+    /// Stream all external tools for this course.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/external_tools`
+    pub fn get_external_tools(&self) -> PageStream<ExternalTool> {
+        let course_id = self.id;
+        PageStream::new_with_injector(
+            Arc::clone(self.req()),
+            &format!("courses/{course_id}/external_tools"),
+            vec![],
+            |mut t: ExternalTool, req| {
+                t.requester = Some(Arc::clone(&req));
+                t
+            },
+        )
+    }
+
+    /// Create an external tool on this course.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/courses/:course_id/external_tools`
+    pub async fn create_external_tool(&self, params: ExternalToolParams) -> Result<ExternalTool> {
+        let form = wrap_params("external_tool", &params);
+        let mut tool: ExternalTool = self
+            .req()
+            .post(&format!("courses/{}/external_tools", self.id), &form)
+            .await?;
+        tool.requester = self.requester.clone();
+        Ok(tool)
+    }
+
+    // -------------------------------------------------------------------------
+    // Rubrics
+    // -------------------------------------------------------------------------
+
+    /// Fetch a single rubric by ID.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/rubrics/:id`
+    pub async fn get_rubric(&self, rubric_id: u64) -> Result<Rubric> {
+        let mut rubric: Rubric = self
+            .req()
+            .get(&format!("courses/{}/rubrics/{rubric_id}", self.id), &[])
+            .await?;
+        rubric.requester = self.requester.clone();
+        Ok(rubric)
+    }
+
+    /// Stream all rubrics for this course.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/rubrics`
+    pub fn get_rubrics(&self) -> PageStream<Rubric> {
+        let course_id = self.id;
+        PageStream::new_with_injector(
+            Arc::clone(self.req()),
+            &format!("courses/{course_id}/rubrics"),
+            vec![],
+            |mut r: Rubric, req| {
+                r.requester = Some(Arc::clone(&req));
+                r
+            },
+        )
+    }
+
+    /// Create a rubric in this course.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/courses/:course_id/rubrics`
+    pub async fn create_rubric(&self, params: RubricParams) -> Result<Rubric> {
+        let form = wrap_params("rubric", &params);
+        let mut rubric: Rubric = self
+            .req()
+            .post(&format!("courses/{}/rubrics", self.id), &form)
+            .await?;
+        rubric.requester = self.requester.clone();
+        Ok(rubric)
+    }
+
+    // -------------------------------------------------------------------------
+    // Blueprint
+    // -------------------------------------------------------------------------
+
+    /// Fetch the blueprint template for this course.
+    ///
+    /// `template_id` is typically `"default"` or a numeric ID.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/blueprint_templates/:template_id`
+    pub async fn get_blueprint(&self, template_id: &str) -> Result<BlueprintTemplate> {
+        let mut tmpl: BlueprintTemplate = self
+            .req()
+            .get(
+                &format!("courses/{}/blueprint_templates/{template_id}", self.id),
+                &[],
+            )
+            .await?;
+        tmpl.requester = self.requester.clone();
+        Ok(tmpl)
+    }
+
+    /// Stream blueprint subscriptions for this (child) course.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/blueprint_subscriptions`
+    pub fn get_blueprint_subscriptions(&self) -> PageStream<BlueprintSubscription> {
+        let course_id = self.id;
+        PageStream::new_with_injector(
+            Arc::clone(self.req()),
+            &format!("courses/{course_id}/blueprint_subscriptions"),
+            vec![],
+            |mut s: BlueprintSubscription, req| {
+                s.requester = Some(Arc::clone(&req));
+                s
+            },
+        )
+    }
+
+    // -------------------------------------------------------------------------
+    // Content Migrations
+    // -------------------------------------------------------------------------
+
+    /// Fetch a single content migration by ID.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/content_migrations/:id`
+    pub async fn get_content_migration(&self, migration_id: u64) -> Result<ContentMigration> {
+        let mut migration: ContentMigration = self
+            .req()
+            .get(
+                &format!("courses/{}/content_migrations/{migration_id}", self.id),
+                &[],
+            )
+            .await?;
+        migration.requester = self.requester.clone();
+        Ok(migration)
+    }
+
+    /// Stream all content migrations for this course.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/content_migrations`
+    pub fn get_content_migrations(&self) -> PageStream<ContentMigration> {
+        let course_id = self.id;
+        PageStream::new_with_injector(
+            Arc::clone(self.req()),
+            &format!("courses/{course_id}/content_migrations"),
+            vec![],
+            |mut m: ContentMigration, req| {
+                m.requester = Some(Arc::clone(&req));
+                m
+            },
+        )
+    }
+
+    /// Create a content migration for this course.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/courses/:course_id/content_migrations`
+    pub async fn create_content_migration(
+        &self,
+        migration_type: &str,
+        params: &[(String, String)],
+    ) -> Result<ContentMigration> {
+        let mut form = vec![("migration_type".to_string(), migration_type.to_string())];
+        form.extend_from_slice(params);
+        let mut migration: ContentMigration = self
+            .req()
+            .post(&format!("courses/{}/content_migrations", self.id), &form)
+            .await?;
+        migration.requester = self.requester.clone();
+        Ok(migration)
+    }
+
+    /// Stream available content migration types for this course.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/content_migrations/migrators`
+    pub fn get_migrators(&self) -> PageStream<Migrator> {
+        PageStream::new(
+            Arc::clone(self.req()),
+            &format!("courses/{}/content_migrations/migrators", self.id),
+            vec![],
+        )
+    }
+
+    // -------------------------------------------------------------------------
+    // Outcome Groups
+    // -------------------------------------------------------------------------
+
+    /// Stream all outcome group links for this course.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/outcome_group_links`
+    pub fn get_outcome_group_links(&self) -> PageStream<OutcomeLink> {
+        PageStream::new(
+            Arc::clone(self.req()),
+            &format!("courses/{}/outcome_group_links", self.id),
+            vec![],
+        )
+    }
+
+    /// Fetch a single outcome group by ID.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/outcome_groups/:id`
+    pub async fn get_outcome_group(&self, group_id: u64) -> Result<OutcomeGroup> {
+        let mut group: OutcomeGroup = self
+            .req()
+            .get(
+                &format!("courses/{}/outcome_groups/{group_id}", self.id),
+                &[],
+            )
+            .await?;
+        group.requester = self.requester.clone();
+        Ok(group)
+    }
+
+    /// Create a top-level outcome group on this course.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/courses/:course_id/outcome_groups`
+    pub async fn create_outcome_group(
+        &self,
+        params: UpdateOutcomeGroupParams,
+    ) -> Result<OutcomeGroup> {
+        let form = wrap_params("outcome_group", &params);
+        let mut group: OutcomeGroup = self
+            .req()
+            .post(&format!("courses/{}/outcome_groups", self.id), &form)
+            .await?;
+        group.requester = self.requester.clone();
+        Ok(group)
     }
 }

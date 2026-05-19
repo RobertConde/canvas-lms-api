@@ -4,7 +4,7 @@ pub mod pagination;
 pub mod resources;
 
 mod http;
-mod params;
+pub(crate) mod params;
 mod upload;
 
 #[cfg(feature = "graphql")]

@@ -3,3 +3,5 @@
 // flatten_params() for query-string construction.
 pub mod assignment_params;
 pub mod course_params;
+pub mod quiz_params;
+pub mod user_params;

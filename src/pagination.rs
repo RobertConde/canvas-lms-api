@@ -17,6 +17,7 @@ pub struct PageStream<T> {
     next_url: Option<Url>,
     params: Vec<(String, String)>,
     buffer: VecDeque<T>,
+    inject_fn: Option<Box<dyn Fn(T, Arc<Requester>) -> T + Send>>,
     _phantom: PhantomData<T>,
 }
 
@@ -35,6 +36,27 @@ impl<T: DeserializeOwned> PageStream<T> {
             next_url,
             params,
             buffer: VecDeque::new(),
+            inject_fn: None,
+            _phantom: PhantomData,
+        }
+    }
+
+    pub(crate) fn new_with_injector(
+        requester: Arc<Requester>,
+        endpoint: &str,
+        mut params: Vec<(String, String)>,
+        inject: impl Fn(T, Arc<Requester>) -> T + Send + 'static,
+    ) -> Self {
+        if !params.iter().any(|(k, _)| k == "per_page") {
+            params.push(("per_page".into(), "100".into()));
+        }
+        let next_url = requester.base_url.join(endpoint).ok();
+        Self {
+            requester,
+            next_url,
+            params,
+            buffer: VecDeque::new(),
+            inject_fn: Some(Box::new(inject)),
             _phantom: PhantomData,
         }
     }
@@ -78,6 +100,11 @@ impl<T: DeserializeOwned> PageStream<T> {
 
         for item in items {
             let resource: T = serde_json::from_value(item)?;
+            let resource = if let Some(f) = &self.inject_fn {
+                f(resource, Arc::clone(&self.requester))
+            } else {
+                resource
+            };
             self.buffer.push_back(resource);
         }
 

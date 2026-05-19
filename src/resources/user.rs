@@ -1,5 +1,11 @@
+use crate::{
+    http::Requester,
+    pagination::PageStream,
+    resources::{course::Course, enrollment::Enrollment},
+};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
 /// A Canvas user.
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -16,6 +22,39 @@ pub struct User {
     pub last_login: Option<DateTime<Utc>>,
     pub time_zone: Option<String>,
     pub bio: Option<String>,
+
+    #[serde(skip)]
+    pub(crate) requester: Option<Arc<Requester>>,
+}
+
+impl User {
+    fn req(&self) -> &Arc<Requester> {
+        self.requester.as_ref().expect("requester not initialized")
+    }
+
+    /// Stream all courses for this user.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/users/:id/courses`
+    pub fn get_courses(&self) -> PageStream<Course> {
+        PageStream::new(
+            Arc::clone(self.req()),
+            &format!("users/{}/courses", self.id),
+            vec![],
+        )
+    }
+
+    /// Stream all enrollments for this user.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/users/:id/enrollments`
+    pub fn get_enrollments(&self) -> PageStream<Enrollment> {
+        PageStream::new(
+            Arc::clone(self.req()),
+            &format!("users/{}/enrollments", self.id),
+            vec![],
+        )
+    }
 }
 
 /// The currently authenticated user (extends User with additional fields).

@@ -32,6 +32,13 @@ pub fn flatten_params(value: &Value) -> Vec<(String, String)> {
     }
 }
 
+/// Wrap a serializable value under a bracket key and flatten.
+/// e.g. wrap_params("course", &params) → [("course[name]", "Intro"), ...]
+pub fn wrap_params<T: serde::Serialize>(key: &str, value: &T) -> Vec<(String, String)> {
+    let json = serde_json::json!({ key: value });
+    flatten_params(&json)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

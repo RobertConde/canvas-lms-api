@@ -8,6 +8,7 @@ pub mod folder;
 pub mod group;
 pub mod module;
 pub mod page;
+pub mod params;
 pub mod progress;
 pub mod quiz;
 pub mod section;

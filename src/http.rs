@@ -72,7 +72,7 @@ impl Requester {
             .client
             .post(url)
             .header("Authorization", self.auth_header())
-            .query(params)
+            .form(params)
             .send()
             .await?;
         let resp = check_status(resp).await?;
@@ -90,7 +90,7 @@ impl Requester {
             .client
             .put(url)
             .header("Authorization", self.auth_header())
-            .query(params)
+            .form(params)
             .send()
             .await?;
         let resp = check_status(resp).await?;
@@ -126,7 +126,7 @@ impl Requester {
             .client
             .patch(url)
             .header("Authorization", self.auth_header())
-            .query(params)
+            .form(params)
             .send()
             .await?;
         let resp = check_status(resp).await?;

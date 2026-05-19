@@ -2,9 +2,14 @@ use crate::{
     error::Result,
     http::Requester,
     pagination::PageStream,
+    params::wrap_params,
     resources::{
         account::Account,
         course::Course,
+        params::{
+            course_params::CreateCourseParams,
+            user_params::CreateUserParams,
+        },
         user::{CurrentUser, User, UserId},
     },
 };
@@ -70,7 +75,43 @@ impl Canvas {
     /// # Canvas API
     /// `GET /api/v1/courses`
     pub fn get_courses(&self) -> PageStream<Course> {
-        PageStream::new(Arc::clone(&self.requester), "courses", vec![])
+        PageStream::new_with_injector(
+            Arc::clone(&self.requester),
+            "courses",
+            vec![],
+            |mut c: Course, req| {
+                c.requester = Some(Arc::clone(&req));
+                c
+            },
+        )
+    }
+
+    /// Create a new course under an account.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/accounts/:account_id/courses`
+    pub async fn create_course(&self, account_id: u64, params: CreateCourseParams) -> Result<Course> {
+        let form = wrap_params("course", &params);
+        let mut course: Course = self
+            .requester
+            .post(&format!("accounts/{account_id}/courses"), &form)
+            .await?;
+        course.requester = Some(Arc::clone(&self.requester));
+        Ok(course)
+    }
+
+    /// Delete a course by ID. Canvas returns the deleted course object.
+    ///
+    /// # Canvas API
+    /// `DELETE /api/v1/courses/:id`
+    pub async fn delete_course(&self, course_id: u64) -> Result<Course> {
+        let params = vec![("event".to_string(), "delete".to_string())];
+        let mut course: Course = self
+            .requester
+            .delete(&format!("courses/{course_id}"), &params)
+            .await?;
+        course.requester = Some(Arc::clone(&self.requester));
+        Ok(course)
     }
 
     // -------------------------------------------------------------------------
@@ -83,7 +124,9 @@ impl Canvas {
     /// `GET /api/v1/users/:id`
     pub async fn get_user(&self, user_id: UserId) -> Result<User> {
         let id = user_id.to_path_segment();
-        self.requester.get(&format!("users/{id}"), &[]).await
+        let mut user: User = self.requester.get(&format!("users/{id}"), &[]).await?;
+        user.requester = Some(Arc::clone(&self.requester));
+        Ok(user)
     }
 
     /// Fetch the currently authenticated user.
@@ -92,6 +135,20 @@ impl Canvas {
     /// `GET /api/v1/users/self`
     pub async fn get_current_user(&self) -> Result<CurrentUser> {
         self.requester.get("users/self", &[]).await
+    }
+
+    /// Create a new user under an account.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/accounts/:account_id/users`
+    pub async fn create_user(&self, account_id: u64, params: CreateUserParams) -> Result<User> {
+        let form = wrap_params("user", &params);
+        let mut user: User = self
+            .requester
+            .post(&format!("accounts/{account_id}/users"), &form)
+            .await?;
+        user.requester = Some(Arc::clone(&self.requester));
+        Ok(user)
     }
 
     // -------------------------------------------------------------------------

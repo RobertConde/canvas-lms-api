@@ -59,7 +59,7 @@ Generate a token in Canvas: **Account → Settings → Approved Integrations →
 
 ## License
 
-Licensed under the [GNU Affero General Public License v3.0](LICENSE) (AGPLv3).
+Licensed under the [MIT License](LICENSE).
 
 ## Acknowledgements
 

@@ -361,3 +361,78 @@ async fn test_get_migrators_on_account() {
     assert_eq!(migrators.len(), 2);
     assert_eq!(migrators[0].name.as_deref(), Some("Common Cartridge"));
 }
+
+#[tokio::test]
+async fn test_create_content_migration_on_account() {
+    let server = MockServer::start().await;
+    let account = make_account(&server).await;
+
+    Mock::given(method("POST"))
+        .and(path("/api/v1/accounts/1/content_migrations"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 77,
+            "account_id": 1,
+            "migration_type": "common_cartridge_importer",
+            "workflow_state": "created"
+        })))
+        .mount(&server)
+        .await;
+
+    let migration = account
+        .create_content_migration("common_cartridge_importer", &[])
+        .await
+        .unwrap();
+    assert_eq!(migration.id, 77);
+    assert_eq!(migration.workflow_state.as_deref(), Some("created"));
+}
+
+#[tokio::test]
+async fn test_get_sis_imports_running_on_account() {
+    let server = MockServer::start().await;
+    let account = make_account(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/accounts/1/sis_imports/importing"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"id": 5, "account_id": 1, "workflow_state": "importing"},
+            {"id": 6, "account_id": 1, "workflow_state": "importing"}
+        ])))
+        .mount(&server)
+        .await;
+
+    let imports = account
+        .get_sis_imports_running()
+        .collect_all()
+        .await
+        .unwrap();
+    assert_eq!(imports.len(), 2);
+    assert_eq!(imports[0].id, 5);
+}
+
+#[tokio::test]
+async fn test_create_outcome_group_on_account() {
+    let server = MockServer::start().await;
+    let account = make_account(&server).await;
+
+    Mock::given(method("POST"))
+        .and(path("/api/v1/accounts/1/outcome_groups"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 88,
+            "context_id": 1,
+            "context_type": "Account",
+            "title": "New Outcomes"
+        })))
+        .mount(&server)
+        .await;
+
+    use canvas_lms_api::resources::outcome::UpdateOutcomeGroupParams;
+    let group = account
+        .create_outcome_group(UpdateOutcomeGroupParams {
+            title: Some("New Outcomes".to_string()),
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+    assert_eq!(group.id, 88);
+    assert_eq!(group.title.as_deref(), Some("New Outcomes"));
+}

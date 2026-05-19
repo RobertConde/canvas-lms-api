@@ -162,3 +162,108 @@ async fn test_get_accounts() {
     assert_eq!(accounts[0].id, 1);
     assert_eq!(accounts[1].id, 2);
 }
+
+#[tokio::test]
+async fn test_get_section() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/api/v1/sections/10"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 10, "name": "Section A", "course_id": 1
+        })))
+        .mount(&server)
+        .await;
+
+    let canvas = Canvas::new(&server.uri(), "test-token").unwrap();
+    let s = canvas.get_section(10).await.unwrap();
+    assert_eq!(s.id, 10);
+    assert_eq!(s.name.as_deref(), Some("Section A"));
+}
+
+#[tokio::test]
+async fn test_get_group() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/api/v1/groups/20"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 20, "name": "Study Group"
+        })))
+        .mount(&server)
+        .await;
+
+    let canvas = Canvas::new(&server.uri(), "test-token").unwrap();
+    let g = canvas.get_group(20).await.unwrap();
+    assert_eq!(g.id, 20);
+    assert_eq!(g.name.as_deref(), Some("Study Group"));
+}
+
+#[tokio::test]
+async fn test_get_file() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/api/v1/files/30"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 30, "display_name": "notes.pdf", "size": 1024
+        })))
+        .mount(&server)
+        .await;
+
+    let canvas = Canvas::new(&server.uri(), "test-token").unwrap();
+    let f = canvas.get_file(30).await.unwrap();
+    assert_eq!(f.id, 30);
+    assert_eq!(f.display_name.as_deref(), Some("notes.pdf"));
+}
+
+#[tokio::test]
+async fn test_get_folder() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/api/v1/folders/40"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 40, "name": "Homework", "full_name": "course files/Homework"
+        })))
+        .mount(&server)
+        .await;
+
+    let canvas = Canvas::new(&server.uri(), "test-token").unwrap();
+    let f = canvas.get_folder(40).await.unwrap();
+    assert_eq!(f.id, 40);
+    assert_eq!(f.name.as_deref(), Some("Homework"));
+}
+
+#[tokio::test]
+async fn test_get_progress() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/api/v1/progress/50"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 50, "workflow_state": "running", "completion": 42
+        })))
+        .mount(&server)
+        .await;
+
+    let canvas = Canvas::new(&server.uri(), "test-token").unwrap();
+    let p = canvas.get_progress(50).await.unwrap();
+    assert_eq!(p.id, 50);
+    assert_eq!(p.workflow_state.as_deref(), Some("running"));
+}
+
+#[tokio::test]
+async fn test_get_outcome() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/api/v1/outcomes/15"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 15,
+            "title": "Written Communication",
+            "points_possible": 5.0
+        })))
+        .mount(&server)
+        .await;
+
+    let canvas = Canvas::new(&server.uri(), "test-token").unwrap();
+    let outcome = canvas.get_outcome(15).await.unwrap();
+    assert_eq!(outcome.id, 15);
+    assert_eq!(outcome.title.as_deref(), Some("Written Communication"));
+    assert_eq!(outcome.points_possible, Some(5.0));
+}

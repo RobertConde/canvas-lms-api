@@ -5,9 +5,20 @@ use crate::{
     params::wrap_params,
     resources::{
         account::Account,
+        appointment_group::{AppointmentGroup, AppointmentGroupParams},
+        calendar_event::{CalendarEvent, CalendarEventParams},
+        conversation::{Conversation, ConversationParams},
         course::Course,
+        eportfolio::EPortfolio,
+        file::File,
+        folder::Folder,
+        group::Group,
+        jwt::CanvasJwt,
         outcome::Outcome,
         params::{course_params::CreateCourseParams, user_params::CreateUserParams},
+        planner::{PlannerNote, PlannerNoteParams, PlannerOverride},
+        progress::Progress,
+        section::Section,
         user::{CurrentUser, User, UserId},
     },
 };
@@ -200,6 +211,347 @@ impl Canvas {
     }
 
     // -------------------------------------------------------------------------
+    // Convenience accessors for existing resources
+    // -------------------------------------------------------------------------
+
+    /// Fetch a single section by ID.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/sections/:id`
+    pub async fn get_section(&self, section_id: u64) -> Result<Section> {
+        self.requester
+            .get(&format!("sections/{section_id}"), &[])
+            .await
+    }
+
+    /// Fetch a single group by ID.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/groups/:id`
+    pub async fn get_group(&self, group_id: u64) -> Result<Group> {
+        self.requester.get(&format!("groups/{group_id}"), &[]).await
+    }
+
+    /// Fetch a single file by ID.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/files/:id`
+    pub async fn get_file(&self, file_id: u64) -> Result<File> {
+        self.requester.get(&format!("files/{file_id}"), &[]).await
+    }
+
+    /// Fetch a single folder by ID.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/folders/:id`
+    pub async fn get_folder(&self, folder_id: u64) -> Result<Folder> {
+        self.requester
+            .get(&format!("folders/{folder_id}"), &[])
+            .await
+    }
+
+    /// Fetch a single progress object by ID.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/progress/:id`
+    pub async fn get_progress(&self, progress_id: u64) -> Result<Progress> {
+        self.requester
+            .get(&format!("progress/{progress_id}"), &[])
+            .await
+    }
+
+    // -------------------------------------------------------------------------
+    // Conversations
+    // -------------------------------------------------------------------------
+
+    /// Fetch a single conversation by ID.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/conversations/:id`
+    pub async fn get_conversation(&self, conversation_id: u64) -> Result<Conversation> {
+        let mut c: Conversation = self
+            .requester
+            .get(&format!("conversations/{conversation_id}"), &[])
+            .await?;
+        c.requester = Some(Arc::clone(&self.requester));
+        Ok(c)
+    }
+
+    /// Stream all conversations for the authenticated user.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/conversations`
+    pub fn get_conversations(&self) -> PageStream<Conversation> {
+        PageStream::new_with_injector(
+            Arc::clone(&self.requester),
+            "conversations",
+            vec![],
+            |mut c: Conversation, req| {
+                c.requester = Some(Arc::clone(&req));
+                c
+            },
+        )
+    }
+
+    /// Create a new conversation.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/conversations`
+    pub async fn create_conversation(
+        &self,
+        recipients: &[&str],
+        body: &str,
+        params: ConversationParams,
+    ) -> Result<Conversation> {
+        let mut form: Vec<(String, String)> = recipients
+            .iter()
+            .map(|r| ("recipients[]".into(), r.to_string()))
+            .collect();
+        form.push(("body".into(), body.to_string()));
+        if let Some(subject) = params.subject {
+            form.push(("subject".into(), subject));
+        }
+        if let Some(fg) = params.force_new {
+            form.push(("force_new".into(), fg.to_string()));
+        }
+        if let Some(gc) = params.group_conversation {
+            form.push(("group_conversation".into(), gc.to_string()));
+        }
+        if let Some(ctx) = params.context_code {
+            form.push(("context_code".into(), ctx));
+        }
+        // Canvas returns an array; take the first element
+        let result: serde_json::Value = self.requester.post("conversations", &form).await?;
+        let first = result
+            .as_array()
+            .and_then(|a| a.first())
+            .cloned()
+            .unwrap_or(result);
+        let mut c: Conversation = serde_json::from_value(first)?;
+        c.requester = Some(Arc::clone(&self.requester));
+        Ok(c)
+    }
+
+    // -------------------------------------------------------------------------
+    // Calendar Events
+    // -------------------------------------------------------------------------
+
+    /// Fetch a single calendar event by ID.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/calendar_events/:id`
+    pub async fn get_calendar_event(&self, event_id: u64) -> Result<CalendarEvent> {
+        let mut e: CalendarEvent = self
+            .requester
+            .get(&format!("calendar_events/{event_id}"), &[])
+            .await?;
+        e.requester = Some(Arc::clone(&self.requester));
+        Ok(e)
+    }
+
+    /// Stream all calendar events visible to the authenticated user.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/calendar_events`
+    pub fn get_calendar_events(&self) -> PageStream<CalendarEvent> {
+        PageStream::new_with_injector(
+            Arc::clone(&self.requester),
+            "calendar_events",
+            vec![],
+            |mut e: CalendarEvent, req| {
+                e.requester = Some(Arc::clone(&req));
+                e
+            },
+        )
+    }
+
+    /// Create a new calendar event.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/calendar_events`
+    pub async fn create_calendar_event(
+        &self,
+        context_code: &str,
+        params: CalendarEventParams,
+    ) -> Result<CalendarEvent> {
+        let body = serde_json::to_value(&params).unwrap_or_default();
+        let mut form = wrap_params("calendar_event", &body);
+        form.push((
+            "calendar_event[context_code]".into(),
+            context_code.to_string(),
+        ));
+        let mut e: CalendarEvent = self.requester.post("calendar_events", &form).await?;
+        e.requester = Some(Arc::clone(&self.requester));
+        Ok(e)
+    }
+
+    // -------------------------------------------------------------------------
+    // Planner
+    // -------------------------------------------------------------------------
+
+    /// Fetch a single planner note by ID.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/planner_notes/:id`
+    pub async fn get_planner_note(&self, note_id: u64) -> Result<PlannerNote> {
+        let mut n: PlannerNote = self
+            .requester
+            .get(&format!("planner_notes/{note_id}"), &[])
+            .await?;
+        n.requester = Some(Arc::clone(&self.requester));
+        Ok(n)
+    }
+
+    /// Stream all planner notes for the authenticated user.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/planner_notes`
+    pub fn get_planner_notes(&self) -> PageStream<PlannerNote> {
+        PageStream::new_with_injector(
+            Arc::clone(&self.requester),
+            "planner_notes",
+            vec![],
+            |mut n: PlannerNote, req| {
+                n.requester = Some(Arc::clone(&req));
+                n
+            },
+        )
+    }
+
+    /// Create a planner note for the authenticated user.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/planner_notes`
+    pub async fn create_planner_note(&self, params: PlannerNoteParams) -> Result<PlannerNote> {
+        let flat: Vec<(String, String)> = serde_json::to_value(&params)
+            .unwrap_or_default()
+            .as_object()
+            .into_iter()
+            .flatten()
+            .filter_map(|(k, v)| {
+                v.as_str()
+                    .map(|s| (k.clone(), s.to_string()))
+                    .or_else(|| v.as_u64().map(|n| (k.clone(), n.to_string())))
+            })
+            .collect();
+        let mut n: PlannerNote = self.requester.post("planner_notes", &flat).await?;
+        n.requester = Some(Arc::clone(&self.requester));
+        Ok(n)
+    }
+
+    /// Fetch a single planner override by ID.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/planner/overrides/:id`
+    pub async fn get_planner_override(&self, override_id: u64) -> Result<PlannerOverride> {
+        let mut o: PlannerOverride = self
+            .requester
+            .get(&format!("planner/overrides/{override_id}"), &[])
+            .await?;
+        o.requester = Some(Arc::clone(&self.requester));
+        Ok(o)
+    }
+
+    /// Stream all planner overrides for the authenticated user.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/planner/overrides`
+    pub fn get_planner_overrides(&self) -> PageStream<PlannerOverride> {
+        PageStream::new_with_injector(
+            Arc::clone(&self.requester),
+            "planner/overrides",
+            vec![],
+            |mut o: PlannerOverride, req| {
+                o.requester = Some(Arc::clone(&req));
+                o
+            },
+        )
+    }
+
+    /// Create a planner override for a specific plannable item.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/planner/overrides`
+    pub async fn create_planner_override(
+        &self,
+        plannable_type: &str,
+        plannable_id: u64,
+    ) -> Result<PlannerOverride> {
+        let form = vec![
+            ("plannable_type".into(), plannable_type.to_string()),
+            ("plannable_id".into(), plannable_id.to_string()),
+        ];
+        let mut o: PlannerOverride = self.requester.post("planner/overrides", &form).await?;
+        o.requester = Some(Arc::clone(&self.requester));
+        Ok(o)
+    }
+
+    // -------------------------------------------------------------------------
+    // ePortfolios
+    // -------------------------------------------------------------------------
+
+    /// Fetch a single ePortfolio by ID.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/eportfolios/:id`
+    pub async fn get_eportfolio(&self, eportfolio_id: u64) -> Result<EPortfolio> {
+        let mut p: EPortfolio = self
+            .requester
+            .get(&format!("eportfolios/{eportfolio_id}"), &[])
+            .await?;
+        p.requester = Some(Arc::clone(&self.requester));
+        Ok(p)
+    }
+
+    // -------------------------------------------------------------------------
+    // Appointment Groups
+    // -------------------------------------------------------------------------
+
+    /// Fetch a single appointment group by ID.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/appointment_groups/:id`
+    pub async fn get_appointment_group(&self, group_id: u64) -> Result<AppointmentGroup> {
+        let mut a: AppointmentGroup = self
+            .requester
+            .get(&format!("appointment_groups/{group_id}"), &[])
+            .await?;
+        a.requester = Some(Arc::clone(&self.requester));
+        Ok(a)
+    }
+
+    /// Stream all appointment groups visible to the authenticated user.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/appointment_groups`
+    pub fn get_appointment_groups(&self) -> PageStream<AppointmentGroup> {
+        PageStream::new_with_injector(
+            Arc::clone(&self.requester),
+            "appointment_groups",
+            vec![],
+            |mut a: AppointmentGroup, req| {
+                a.requester = Some(Arc::clone(&req));
+                a
+            },
+        )
+    }
+
+    /// Create a new appointment group.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/appointment_groups`
+    pub async fn create_appointment_group(
+        &self,
+        params: AppointmentGroupParams,
+    ) -> Result<AppointmentGroup> {
+        let body = serde_json::to_value(&params).unwrap_or_default();
+        let form = wrap_params("appointment_group", &body);
+        let mut a: AppointmentGroup = self.requester.post("appointment_groups", &form).await?;
+        a.requester = Some(Arc::clone(&self.requester));
+        Ok(a)
+    }
+
+    // -------------------------------------------------------------------------
     // GraphQL (feature = "graphql")
     // -------------------------------------------------------------------------
 
@@ -218,6 +570,27 @@ impl Canvas {
         crate::graphql::GraphQL {
             requester: Arc::clone(&self.requester),
         }
+    }
+
+    // -------------------------------------------------------------------------
+    // JWT
+    // -------------------------------------------------------------------------
+
+    /// Create a short-lived JWT for use with other Canvas services.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/jwts`
+    pub async fn create_jwt(&self) -> Result<CanvasJwt> {
+        self.requester.post("jwts", &[]).await
+    }
+
+    /// Refresh an existing JWT, returning a new one.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/jwts/refresh`
+    pub async fn refresh_jwt(&self, token: &str) -> Result<CanvasJwt> {
+        let params = vec![("jwt".into(), token.to_string())];
+        self.requester.post("jwts/refresh", &params).await
     }
 }
 

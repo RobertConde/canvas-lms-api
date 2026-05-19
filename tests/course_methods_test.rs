@@ -848,3 +848,51 @@ async fn test_get_uncollated_submissions() {
     assert_eq!(versions[0].assignment_id, Some(10));
     assert_eq!(versions[0].grade.as_deref(), Some("A"));
 }
+
+#[tokio::test]
+async fn test_get_rubric_association() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/rubric_associations/7"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 7,
+            "rubric_id": 3,
+            "association_id": 1,
+            "association_type": "Course",
+            "course_id": 1,
+            "purpose": "grading"
+        })))
+        .mount(&server)
+        .await;
+
+    let assoc = course.get_rubric_association(7).await.unwrap();
+    assert_eq!(assoc.id, 7);
+    assert_eq!(assoc.rubric_id, Some(3));
+    assert_eq!(assoc.purpose.as_deref(), Some("grading"));
+}
+
+#[tokio::test]
+async fn test_get_rubric_associations() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/rubric_associations"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"id": 7, "rubric_id": 3, "association_id": 1, "association_type": "Course", "course_id": 1},
+            {"id": 8, "rubric_id": 4, "association_id": 10, "association_type": "Assignment", "course_id": 1}
+        ])))
+        .mount(&server)
+        .await;
+
+    let assocs = course
+        .get_rubric_associations()
+        .collect_all()
+        .await
+        .unwrap();
+    assert_eq!(assocs.len(), 2);
+    assert_eq!(assocs[0].id, 7);
+    assert_eq!(assocs[1].association_type.as_deref(), Some("Assignment"));
+}

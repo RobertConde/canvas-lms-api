@@ -26,18 +26,27 @@ Add a link reference at the bottom of the file:
 [0.1.1]: https://github.com/RobertConde/canvas-lms-api/compare/v0.1.0...v0.1.1
 ```
 
-### 3. Commit and push
+### 3. Update README.md
+
+- Bump the version in the `[dependencies]` example to match the new release.
+- Update the **Resources covered** section to reflect any new resource types added in this release.
+
+### 4. Verify CI locally
+
+Run each step defined in `.github/workflows/ci.yml` locally. Fix any failures before proceeding.
+
+### 5. Commit and push
 
 Run `cargo update --workspace` first to update `Cargo.lock` to reflect the new version:
 
 ```bash
 cargo update --workspace
-git add Cargo.toml Cargo.lock CHANGELOG.md <any other changed files>
+git add Cargo.toml Cargo.lock CHANGELOG.md README.md <any other changed files>
 git commit -m "Release v0.1.1"
 git push
 ```
 
-### 4. Tag and push the tag
+### 6. Tag and push the tag
 
 ```bash
 git tag v0.1.1
@@ -46,7 +55,7 @@ git push origin v0.1.1
 
 This triggers the `Publish` GitHub Actions workflow.
 
-### 5. Approve the deployment
+### 7. Approve the deployment
 
 The publish job waits for manual approval due to the `crates-io` environment protection rule.
 
@@ -59,7 +68,7 @@ gh run list --repo RobertConde/canvas-lms-api --limit 5
 gh run review <run-id> --approve
 ```
 
-### 6. Verify the publish run succeeded
+### 8. Verify the publish run succeeded
 
 ```bash
 gh run view <run-id> --repo RobertConde/canvas-lms-api

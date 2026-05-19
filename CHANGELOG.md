@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-05-20
+
+### Added
+- **AppointmentGroup**: `Canvas::get_appointment_group`, `get_appointment_groups`,
+  `create_appointment_group`; `AppointmentGroup::delete`, `edit`
+- **CalendarEvent**: `Canvas::get_calendar_event`, `get_calendar_events`,
+  `create_calendar_event`; `CalendarEvent::delete`, `edit`
+- **Conversation**: `Canvas::get_conversation`, `get_conversations`,
+  `create_conversation`; `Conversation::add_message`, `add_recipients`,
+  `delete`, `delete_messages`, `edit`, `set_workflow_state`
+- **EnrollmentTerm**: `Account::get_enrollment_term`, `get_enrollment_terms`,
+  `create_enrollment_term`; `EnrollmentTerm::delete`, `edit`
+- **EPortfolio / EPortfolioPage**: `Canvas::get_eportfolio`;
+  `EPortfolio::delete`, `get_pages`, `moderate`, `restore`
+- **GradingPeriod**: `Course::get_grading_periods`;
+  `GradingPeriod::update`, `delete`
+- **GradingStandard**: `Account::get_grading_standards`, `get_grading_standard`,
+  `create_grading_standard`; `Course::get_grading_standards`, `create_grading_standard`
+- **JWT**: `Canvas::create_jwt`, `refresh_jwt`; `CanvasJwt` struct
+- **ContentExport**: `Account::get_content_export`, `get_content_exports`,
+  `create_content_export`; `Course::get_content_export`, `get_content_exports`,
+  `create_content_export`; `ContentExportParams` builder
+- **GradeChangeLog**: `Course::get_grade_change_events` returning
+  `PageStream<GradeChangeEvent>`; handles Canvas `{"events":[...]}` wrapper
+- **Feature / FeatureFlag**: `Account::get_features`, `get_feature_flag`,
+  `get_enabled_features`; `Course::get_features`, `get_feature_flag`,
+  `get_enabled_features`
+- **PlannerNote / PlannerOverride**: `Canvas::get_planner_note`,
+  `get_planner_notes`, `create_planner_note`; `Canvas::get_planner_override`,
+  `get_planner_overrides`, `create_planner_override`; full CRUD on each struct
+- **Role**: `Account::get_role`, `get_roles`, `create_role`, `deactivate_role`,
+  `activate_role`, `update_role`
+- **Convenience client methods**: `Canvas::get_section`, `get_group`, `get_file`,
+  `get_folder`, `get_progress`, `get_outcome`
+
 ## [0.2.0] - 2026-05-19
 
 ### Added
@@ -70,6 +105,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI: fmt, clippy, tests, doc build, MSRV 1.75 check
 - MIT license
 
+[0.3.0]: https://github.com/RobertConde/canvas-lms-api/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/RobertConde/canvas-lms-api/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/RobertConde/canvas-lms-api/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/RobertConde/canvas-lms-api/compare/v0.1.0...v0.1.1

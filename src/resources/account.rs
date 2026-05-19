@@ -5,9 +5,14 @@ use crate::{
     params::wrap_params,
     resources::{
         account_calendar::AccountCalendar,
+        content_export::{ContentExport, ContentExportParams},
         content_migration::{ContentMigration, Migrator},
+        enrollment_term::{EnrollmentTerm, EnrollmentTermParams},
         external_tool::{ExternalTool, ExternalToolParams},
+        feature::{Feature, FeatureFlag},
+        grading_standard::{GradingStandard, GradingStandardParams},
         outcome::{OutcomeGroup, UpdateOutcomeGroupParams},
+        role::{Role, RoleParams},
         rubric::{Rubric, RubricParams},
         sis_import::SisImport,
     },
@@ -353,5 +358,274 @@ impl Account {
             &format!("accounts/{}/content_migrations/migrators", self.id),
             vec![],
         )
+    }
+
+    // -------------------------------------------------------------------------
+    // Enrollment Terms
+    // -------------------------------------------------------------------------
+
+    /// Fetch a single enrollment term by ID.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/accounts/:account_id/terms/:id`
+    pub async fn get_enrollment_term(&self, term_id: u64) -> Result<EnrollmentTerm> {
+        let mut t: EnrollmentTerm = self
+            .req()
+            .get(&format!("accounts/{}/terms/{term_id}", self.id), &[])
+            .await?;
+        t.requester = self.requester.clone();
+        t.account_id = Some(self.id);
+        Ok(t)
+    }
+
+    /// Stream all enrollment terms for this account.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/accounts/:account_id/terms`
+    pub fn get_enrollment_terms(&self) -> PageStream<EnrollmentTerm> {
+        let account_id = self.id;
+        let req = Arc::clone(self.req());
+        PageStream::new_with_injector(
+            req,
+            &format!("accounts/{account_id}/terms"),
+            vec![],
+            move |mut t: EnrollmentTerm, r| {
+                t.requester = Some(Arc::clone(&r));
+                t.account_id = Some(account_id);
+                t
+            },
+        )
+    }
+
+    /// Create an enrollment term on this account.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/accounts/:account_id/terms`
+    pub async fn create_enrollment_term(
+        &self,
+        params: EnrollmentTermParams,
+    ) -> Result<EnrollmentTerm> {
+        let form = wrap_params("enrollment_term", &params);
+        let mut t: EnrollmentTerm = self
+            .req()
+            .post(&format!("accounts/{}/terms", self.id), &form)
+            .await?;
+        t.requester = self.requester.clone();
+        t.account_id = Some(self.id);
+        Ok(t)
+    }
+
+    // -------------------------------------------------------------------------
+    // Grading Standards
+    // -------------------------------------------------------------------------
+
+    /// Stream all grading standards for this account.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/accounts/:account_id/grading_standards`
+    pub fn get_grading_standards(&self) -> PageStream<GradingStandard> {
+        PageStream::new(
+            Arc::clone(self.req()),
+            &format!("accounts/{}/grading_standards", self.id),
+            vec![],
+        )
+    }
+
+    /// Fetch a single grading standard by ID.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/accounts/:account_id/grading_standards/:grading_standard_id`
+    pub async fn get_grading_standard(&self, standard_id: u64) -> Result<GradingStandard> {
+        self.req()
+            .get(
+                &format!("accounts/{}/grading_standards/{standard_id}", self.id),
+                &[],
+            )
+            .await
+    }
+
+    /// Create a grading standard on this account.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/accounts/:account_id/grading_standards`
+    pub async fn create_grading_standard(
+        &self,
+        params: GradingStandardParams,
+    ) -> Result<GradingStandard> {
+        let form = wrap_params("grading_scheme_entry", &params.grading_scheme_entry)
+            .into_iter()
+            .chain([("title".into(), params.title)])
+            .collect::<Vec<_>>();
+        self.req()
+            .post(&format!("accounts/{}/grading_standards", self.id), &form)
+            .await
+    }
+
+    // -------------------------------------------------------------------------
+    // Roles
+    // -------------------------------------------------------------------------
+
+    /// Fetch a single role by ID.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/accounts/:account_id/roles/:id`
+    pub async fn get_role(&self, role_id: u64) -> Result<Role> {
+        self.req()
+            .get(&format!("accounts/{}/roles/{role_id}", self.id), &[])
+            .await
+    }
+
+    /// Stream all roles for this account.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/accounts/:account_id/roles`
+    pub fn get_roles(&self) -> PageStream<Role> {
+        PageStream::new(
+            Arc::clone(self.req()),
+            &format!("accounts/{}/roles", self.id),
+            vec![],
+        )
+    }
+
+    /// Create a role on this account.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/accounts/:account_id/roles`
+    pub async fn create_role(&self, label: &str, params: RoleParams) -> Result<Role> {
+        let mut form = vec![("label".into(), label.to_string())];
+        if let Some(base) = &params.base_role_type {
+            form.push(("base_role_type".into(), base.clone()));
+        }
+        if let Some(perms) = &params.permissions {
+            form.extend(crate::params::to_canvas_params("permissions", perms));
+        }
+        self.req()
+            .post(&format!("accounts/{}/roles", self.id), &form)
+            .await
+    }
+
+    /// Deactivate a role by ID.
+    ///
+    /// # Canvas API
+    /// `DELETE /api/v1/accounts/:account_id/roles/:id`
+    pub async fn deactivate_role(&self, role_id: u64) -> Result<Role> {
+        self.req()
+            .delete(&format!("accounts/{}/roles/{role_id}", self.id), &[])
+            .await
+    }
+
+    /// Activate a previously deactivated role.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/accounts/:account_id/roles/:id/activate`
+    pub async fn activate_role(&self, role_id: u64) -> Result<Role> {
+        self.req()
+            .post(
+                &format!("accounts/{}/roles/{role_id}/activate", self.id),
+                &[],
+            )
+            .await
+    }
+
+    /// Update a role.
+    ///
+    /// # Canvas API
+    /// `PUT /api/v1/accounts/:account_id/roles/:id`
+    pub async fn update_role(&self, role_id: u64, params: RoleParams) -> Result<Role> {
+        let mut form: Vec<(String, String)> = vec![];
+        if let Some(perms) = &params.permissions {
+            form.extend(crate::params::to_canvas_params("permissions", perms));
+        }
+        self.req()
+            .put(&format!("accounts/{}/roles/{role_id}", self.id), &form)
+            .await
+    }
+
+    // -------------------------------------------------------------------------
+    // Content Exports
+    // -------------------------------------------------------------------------
+
+    /// Fetch a single content export by ID.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/accounts/:account_id/content_exports/:id`
+    pub async fn get_content_export(&self, export_id: u64) -> Result<ContentExport> {
+        self.req()
+            .get(
+                &format!("accounts/{}/content_exports/{export_id}", self.id),
+                &[],
+            )
+            .await
+    }
+
+    /// Stream all content exports for this account.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/accounts/:account_id/content_exports`
+    pub fn get_content_exports(&self) -> PageStream<ContentExport> {
+        PageStream::new(
+            Arc::clone(self.req()),
+            &format!("accounts/{}/content_exports", self.id),
+            vec![],
+        )
+    }
+
+    /// Create a content export for this account.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/accounts/:account_id/content_exports`
+    pub async fn create_content_export(
+        &self,
+        params: ContentExportParams,
+    ) -> Result<ContentExport> {
+        let form = vec![
+            ("export_type".into(), params.export_type),
+            (
+                "skip_notifications".into(),
+                params.skip_notifications.unwrap_or(false).to_string(),
+            ),
+        ];
+        self.req()
+            .post(&format!("accounts/{}/content_exports", self.id), &form)
+            .await
+    }
+
+    // -------------------------------------------------------------------------
+    // Features
+    // -------------------------------------------------------------------------
+
+    /// Stream all feature flags for this account.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/accounts/:account_id/features`
+    pub fn get_features(&self) -> PageStream<Feature> {
+        PageStream::new(
+            Arc::clone(self.req()),
+            &format!("accounts/{}/features", self.id),
+            vec![],
+        )
+    }
+
+    /// Fetch a specific feature flag for this account by feature name.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/accounts/:account_id/features/flags/:feature`
+    pub async fn get_feature_flag(&self, feature: &str) -> Result<FeatureFlag> {
+        self.req()
+            .get(
+                &format!("accounts/{}/features/flags/{feature}", self.id),
+                &[],
+            )
+            .await
+    }
+
+    /// List all enabled feature names for this account.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/accounts/:account_id/features/enabled`
+    pub async fn get_enabled_features(&self) -> Result<Vec<String>> {
+        self.req()
+            .get(&format!("accounts/{}/features/enabled", self.id), &[])
+            .await
     }
 }

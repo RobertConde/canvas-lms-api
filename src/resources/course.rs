@@ -6,12 +6,17 @@ use crate::{
     resources::{
         assignment::Assignment,
         blueprint::{BlueprintSubscription, BlueprintTemplate},
+        content_export::{ContentExport, ContentExportParams},
         content_migration::{ContentMigration, Migrator},
         discussion_topic::DiscussionTopic,
         enrollment::Enrollment,
         external_tool::{ExternalTool, ExternalToolParams},
+        feature::{Feature, FeatureFlag},
         file::File,
+        grade_change_log::GradeChangeEvent,
         gradebook_history::{Day, Grader, SubmissionHistory, SubmissionVersion},
+        grading_period::GradingPeriod,
+        grading_standard::GradingStandard,
         group::Group,
         module::Module,
         outcome::{OutcomeGroup, OutcomeLink, UpdateOutcomeGroupParams},
@@ -743,5 +748,167 @@ impl Course {
         quiz.requester = self.requester.clone();
         quiz.course_id = Some(self.id);
         Ok(quiz)
+    }
+
+    // -------------------------------------------------------------------------
+    // Grading Periods
+    // -------------------------------------------------------------------------
+
+    /// Stream all grading periods for this course.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/grading_periods`
+    pub fn get_grading_periods(&self) -> PageStream<GradingPeriod> {
+        let course_id = self.id;
+        PageStream::new_with_injector(
+            Arc::clone(self.req()),
+            &format!("courses/{course_id}/grading_periods"),
+            vec![],
+            move |mut gp: GradingPeriod, req| {
+                gp.requester = Some(Arc::clone(&req));
+                gp.course_id = Some(course_id);
+                gp
+            },
+        )
+    }
+
+    // -------------------------------------------------------------------------
+    // Grading Standards
+    // -------------------------------------------------------------------------
+
+    /// Stream all grading standards for this course.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/grading_standards`
+    pub fn get_grading_standards(&self) -> PageStream<GradingStandard> {
+        PageStream::new(
+            Arc::clone(self.req()),
+            &format!("courses/{}/grading_standards", self.id),
+            vec![],
+        )
+    }
+
+    /// Create a grading standard for this course.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/courses/:course_id/grading_standards`
+    pub async fn create_grading_standard(
+        &self,
+        params: crate::resources::grading_standard::GradingStandardParams,
+    ) -> Result<GradingStandard> {
+        let form = wrap_params("grading_scheme_entry", &params.grading_scheme_entry)
+            .into_iter()
+            .chain([("title".into(), params.title)])
+            .collect::<Vec<_>>();
+        self.req()
+            .post(&format!("courses/{}/grading_standards", self.id), &form)
+            .await
+    }
+
+    // -------------------------------------------------------------------------
+    // Content Exports
+    // -------------------------------------------------------------------------
+
+    /// Fetch a single content export by ID.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/content_exports/:id`
+    pub async fn get_content_export(&self, export_id: u64) -> Result<ContentExport> {
+        self.req()
+            .get(
+                &format!("courses/{}/content_exports/{export_id}", self.id),
+                &[],
+            )
+            .await
+    }
+
+    /// Stream all content exports for this course.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/content_exports`
+    pub fn get_content_exports(&self) -> PageStream<ContentExport> {
+        PageStream::new(
+            Arc::clone(self.req()),
+            &format!("courses/{}/content_exports", self.id),
+            vec![],
+        )
+    }
+
+    /// Create a content export for this course.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/courses/:course_id/content_exports`
+    pub async fn create_content_export(
+        &self,
+        params: ContentExportParams,
+    ) -> Result<ContentExport> {
+        let form = vec![
+            ("export_type".into(), params.export_type),
+            (
+                "skip_notifications".into(),
+                params.skip_notifications.unwrap_or(false).to_string(),
+            ),
+        ];
+        self.req()
+            .post(&format!("courses/{}/content_exports", self.id), &form)
+            .await
+    }
+
+    // -------------------------------------------------------------------------
+    // Grade Change Log
+    // -------------------------------------------------------------------------
+
+    /// Stream grade change audit events for this course.
+    ///
+    /// The Canvas API wraps the array in `{ "events": [...] }`; `PageStream`
+    /// handles this automatically.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/audit/grade_change/courses/:course_id`
+    pub fn get_grade_change_events(&self) -> PageStream<GradeChangeEvent> {
+        PageStream::new(
+            Arc::clone(self.req()),
+            &format!("audit/grade_change/courses/{}", self.id),
+            vec![],
+        )
+    }
+
+    // -------------------------------------------------------------------------
+    // Features
+    // -------------------------------------------------------------------------
+
+    /// Stream all feature flags for this course.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/features`
+    pub fn get_features(&self) -> PageStream<Feature> {
+        PageStream::new(
+            Arc::clone(self.req()),
+            &format!("courses/{}/features", self.id),
+            vec![],
+        )
+    }
+
+    /// Fetch a specific feature flag for this course by feature name.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/features/flags/:feature`
+    pub async fn get_feature_flag(&self, feature: &str) -> Result<FeatureFlag> {
+        self.req()
+            .get(
+                &format!("courses/{}/features/flags/{feature}", self.id),
+                &[],
+            )
+            .await
+    }
+
+    /// List all enabled feature names for this course.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/features/enabled`
+    pub async fn get_enabled_features(&self) -> Result<Vec<String>> {
+        self.req()
+            .get(&format!("courses/{}/features/enabled", self.id), &[])
+            .await
     }
 }

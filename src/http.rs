@@ -8,23 +8,29 @@ use url::Url;
 pub(crate) struct Requester {
     pub(crate) client: Client,
     pub(crate) base_url: Url,
+    #[cfg(feature = "new-quizzes")]
     pub(crate) new_quizzes_url: Url,
+    #[cfg(feature = "graphql")]
     pub(crate) graphql_url: Url,
     access_token: String,
 }
 
 impl Requester {
     pub(crate) fn new(base_url: Url, access_token: String, client: Client) -> Self {
+        #[cfg(feature = "new-quizzes")]
         let new_quizzes_url = base_url
             .join("../quiz/v1/")
             .unwrap_or_else(|_| base_url.clone());
+        #[cfg(feature = "graphql")]
         let graphql_url = base_url
             .join("../graphql")
             .unwrap_or_else(|_| base_url.clone());
         Self {
             client,
             base_url,
+            #[cfg(feature = "new-quizzes")]
             new_quizzes_url,
+            #[cfg(feature = "graphql")]
             graphql_url,
             access_token,
         }

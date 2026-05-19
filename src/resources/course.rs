@@ -311,4 +311,25 @@ impl Course {
             vec![],
         )
     }
+
+    /// Upload a file to this course.
+    ///
+    /// Canvas uses a two-step upload: first POSTing metadata to obtain an upload URL,
+    /// then POSTing the file as multipart form data to that URL.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/courses/:id/files`
+    pub async fn upload_file(
+        &self,
+        request: crate::upload::UploadRequest,
+        data: Vec<u8>,
+    ) -> crate::error::Result<crate::resources::file::File> {
+        crate::upload::initiate_and_upload(
+            self.req(),
+            &format!("courses/{}/files", self.id),
+            request,
+            data,
+        )
+        .await
+    }
 }

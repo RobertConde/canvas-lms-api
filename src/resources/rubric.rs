@@ -4,7 +4,7 @@ use serde_json::Value;
 use std::sync::Arc;
 
 /// A Canvas rubric.
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, canvas_lms_api_derive::CanvasResource)]
 pub struct Rubric {
     pub id: u64,
     pub title: Option<String>,
@@ -33,10 +33,6 @@ pub struct RubricParams {
 }
 
 impl Rubric {
-    fn req(&self) -> &Arc<Requester> {
-        self.requester.as_ref().expect("requester not initialized")
-    }
-
     fn course_id(&self) -> u64 {
         self.course_id.expect("Rubric missing course_id")
     }
@@ -76,7 +72,7 @@ impl Rubric {
 }
 
 /// A rubric assessment (a filled-out rubric for a specific submission).
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, canvas_lms_api_derive::CanvasResource)]
 pub struct RubricAssessment {
     pub id: u64,
     pub rubric_id: Option<u64>,
@@ -95,10 +91,6 @@ pub struct RubricAssessment {
 }
 
 impl RubricAssessment {
-    fn req(&self) -> &Arc<Requester> {
-        self.requester.as_ref().expect("requester not initialized")
-    }
-
     fn course_id(&self) -> u64 {
         self.course_id.expect("RubricAssessment missing course_id")
     }
@@ -152,7 +144,7 @@ impl RubricAssessment {
 }
 
 /// An association between a rubric and a course assignment or course.
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, canvas_lms_api_derive::CanvasResource)]
 pub struct RubricAssociation {
     pub id: u64,
     pub rubric_id: Option<u64>,
@@ -171,10 +163,6 @@ pub struct RubricAssociation {
 }
 
 impl RubricAssociation {
-    fn req(&self) -> &Arc<Requester> {
-        self.requester.as_ref().expect("requester not initialized")
-    }
-
     fn course_id(&self) -> u64 {
         self.course_id.expect("RubricAssociation missing course_id")
     }

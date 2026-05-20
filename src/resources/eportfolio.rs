@@ -15,7 +15,7 @@ pub struct EPortfolioPage {
     pub updated_at: Option<String>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, canvas_lms_api_derive::CanvasResource)]
 pub struct EPortfolio {
     pub id: u64,
     pub user_id: Option<u64>,
@@ -30,10 +30,6 @@ pub struct EPortfolio {
 }
 
 impl EPortfolio {
-    fn req(&self) -> &Arc<Requester> {
-        self.requester.as_ref().expect("requester not injected")
-    }
-
     fn endpoint(&self) -> String {
         format!("eportfolios/{}", self.id)
     }

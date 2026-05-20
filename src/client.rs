@@ -17,6 +17,7 @@ use crate::{
         outcome::Outcome,
         params::{course_params::CreateCourseParams, user_params::CreateUserParams},
         planner::{PlannerNote, PlannerNoteParams, PlannerOverride},
+        poll::{CreatePollParams, Poll},
         progress::Progress,
         section::Section,
         user::{CurrentUser, User, UserId},
@@ -229,7 +230,12 @@ impl Canvas {
     /// # Canvas API
     /// `GET /api/v1/groups/:id`
     pub async fn get_group(&self, group_id: u64) -> Result<Group> {
-        self.requester.get(&format!("groups/{group_id}"), &[]).await
+        let mut g: Group = self
+            .requester
+            .get(&format!("groups/{group_id}"), &[])
+            .await?;
+        g.requester = Some(Arc::clone(&self.requester));
+        Ok(g)
     }
 
     /// Fetch a single file by ID.
@@ -574,6 +580,51 @@ impl Canvas {
 
     // -------------------------------------------------------------------------
     // JWT
+    // -------------------------------------------------------------------------
+
+    // -------------------------------------------------------------------------
+    // Polls
+    // -------------------------------------------------------------------------
+
+    /// Fetch a single poll by ID.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/polls/:id`
+    pub async fn get_poll(&self, poll_id: u64) -> Result<Poll> {
+        let val: serde_json::Value = self.requester.get(&format!("polls/{poll_id}"), &[]).await?;
+        let mut poll: Poll = serde_json::from_value(val["polls"][0].clone())?;
+        poll.requester = Some(Arc::clone(&self.requester));
+        Ok(poll)
+    }
+
+    /// Stream all polls for the current user.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/polls`
+    pub fn get_polls(&self) -> PageStream<Poll> {
+        PageStream::new_with_injector(
+            Arc::clone(&self.requester),
+            "polls",
+            vec![],
+            |mut p: Poll, req| {
+                p.requester = Some(Arc::clone(&req));
+                p
+            },
+        )
+    }
+
+    /// Create a new poll for the current user.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/polls`
+    pub async fn create_poll(&self, params: CreatePollParams) -> Result<Poll> {
+        let form = wrap_params("polls[]", &params);
+        let val: serde_json::Value = self.requester.post("polls", &form).await?;
+        let mut poll: Poll = serde_json::from_value(val["polls"][0].clone())?;
+        poll.requester = Some(Arc::clone(&self.requester));
+        Ok(poll)
+    }
+
     // -------------------------------------------------------------------------
 
     /// Create a short-lived JWT for use with other Canvas services.

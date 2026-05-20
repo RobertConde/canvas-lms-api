@@ -53,6 +53,7 @@ pub mod graphql;
 #[cfg(feature = "blocking")]
 pub mod client_blocking;
 
+pub use canvas_lms_api_derive::CanvasResource;
 pub use client::Canvas;
 pub use error::{CanvasError, Result};
 pub use pagination::PageStream;

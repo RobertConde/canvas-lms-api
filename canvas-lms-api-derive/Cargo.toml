@@ -1,0 +1,15 @@
+[package]
+name = "canvas-lms-api-derive"
+version = "0.1.0"
+edition = "2021"
+description = "Derive macros for canvas-lms-api"
+license = "MIT"
+repository = "https://github.com/RobertConde/canvas-lms-api"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = { version = "2", features = ["full"] }
+quote = "1"
+proc-macro2 = "1"

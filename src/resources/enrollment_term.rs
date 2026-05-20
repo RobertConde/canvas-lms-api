@@ -3,7 +3,7 @@ use crate::http::Requester;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, canvas_lms_api_derive::CanvasResource)]
 pub struct EnrollmentTerm {
     pub id: u64,
     pub sis_term_id: Option<String>,
@@ -34,10 +34,6 @@ pub struct EnrollmentTermParams {
 }
 
 impl EnrollmentTerm {
-    fn req(&self) -> &Arc<Requester> {
-        self.requester.as_ref().expect("requester not injected")
-    }
-
     fn endpoint(&self) -> String {
         let account_id = self.account_id.unwrap_or(1);
         format!("accounts/{}/terms/{}", account_id, self.id)

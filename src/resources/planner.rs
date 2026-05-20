@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 // ── Planner Note ──────────────────────────────────────────────────────────────
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, canvas_lms_api_derive::CanvasResource)]
 pub struct PlannerNote {
     pub id: u64,
     pub title: Option<String>,
@@ -33,10 +33,6 @@ pub struct PlannerNoteParams {
 }
 
 impl PlannerNote {
-    fn req(&self) -> &Arc<Requester> {
-        self.requester.as_ref().expect("requester not injected")
-    }
-
     fn endpoint(&self) -> String {
         format!("planner_notes/{}", self.id)
     }
@@ -73,7 +69,7 @@ impl PlannerNote {
 
 // ── Planner Override ──────────────────────────────────────────────────────────
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, canvas_lms_api_derive::CanvasResource)]
 pub struct PlannerOverride {
     pub id: u64,
     pub plannable_type: Option<String>,
@@ -99,10 +95,6 @@ pub struct PlannerOverrideParams {
 }
 
 impl PlannerOverride {
-    fn req(&self) -> &Arc<Requester> {
-        self.requester.as_ref().expect("requester not injected")
-    }
-
     fn endpoint(&self) -> String {
         format!("planner/overrides/{}", self.id)
     }

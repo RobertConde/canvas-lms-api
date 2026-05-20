@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
 /// A Canvas content migration job.
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, canvas_lms_api_derive::CanvasResource)]
 pub struct ContentMigration {
     pub id: u64,
     pub migration_type: Option<String>,
@@ -28,10 +28,6 @@ pub struct ContentMigration {
 }
 
 impl ContentMigration {
-    fn req(&self) -> &Arc<Requester> {
-        self.requester.as_ref().expect("requester not initialized")
-    }
-
     fn parent_type(&self) -> &'static str {
         if self.course_id.is_some() {
             "course"
@@ -117,7 +113,7 @@ impl ContentMigration {
 }
 
 /// An issue encountered during a content migration.
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, canvas_lms_api_derive::CanvasResource)]
 pub struct MigrationIssue {
     pub id: u64,
     pub content_migration_url: Option<String>,
@@ -135,10 +131,6 @@ pub struct MigrationIssue {
 }
 
 impl MigrationIssue {
-    fn req(&self) -> &Arc<Requester> {
-        self.requester.as_ref().expect("requester not initialized")
-    }
-
     /// Update the workflow state of this migration issue.
     ///
     /// `workflow_state` should be `"active"` or `"resolved"`.

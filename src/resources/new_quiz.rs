@@ -7,7 +7,7 @@ use std::sync::Arc;
 ///
 /// Requires the `new-quizzes` feature. All methods hit `/api/quiz/v1/`
 /// rather than the standard `/api/v1/` base.
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, canvas_lms_api_derive::CanvasResource)]
 pub struct NewQuiz {
     pub id: Option<String>,
     pub course_id: Option<u64>,
@@ -50,10 +50,6 @@ pub struct NewQuizParams {
 }
 
 impl NewQuiz {
-    fn req(&self) -> &Arc<Requester> {
-        self.requester.as_ref().expect("requester not initialized")
-    }
-
     fn course_id(&self) -> u64 {
         self.course_id.expect("NewQuiz missing course_id")
     }

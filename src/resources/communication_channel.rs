@@ -5,7 +5,7 @@ use serde_json::Value;
 use std::sync::Arc;
 
 /// A Canvas communication channel (email, SMS, push notification, etc.).
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, canvas_lms_api_derive::CanvasResource)]
 pub struct CommunicationChannel {
     pub id: u64,
     pub address: Option<String>,
@@ -21,10 +21,6 @@ pub struct CommunicationChannel {
 }
 
 impl CommunicationChannel {
-    fn req(&self) -> &Arc<Requester> {
-        self.requester.as_ref().expect("requester not initialized")
-    }
-
     fn user_id(&self) -> u64 {
         self.user_id.expect("CommunicationChannel missing user_id")
     }

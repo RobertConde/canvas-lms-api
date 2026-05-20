@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-05-20
+
+### Added
+- **Polls** — `Poll`, `PollChoice`, `PollSession`, `PollSubmission` structs with full CRUD
+  matching the Python `canvasapi` surface. Client-level: `Canvas::get_poll`,
+  `get_polls`, `create_poll`. Instance methods: `Poll::update`, `delete`,
+  `get_choice`, `get_choices`, `create_choice`, `get_session`, `get_sessions`,
+  `create_session`; `PollChoice::update`, `delete`; `PollSession::update`,
+  `delete`, `open`, `close`, `get_submission`, `create_submission`.
+- **Collaborations** — `Collaboration` + `Collaborator` structs.
+  `Course::get_collaborations`, `Group::get_collaborations` (list only — no
+  create/get-single endpoint exists in the Canvas API).
+  `Collaboration::get_collaborators` (`GET /collaborations/:id/members`).
+- **LTI Resource Links** — `LtiResourceLink` + `CreateLtiResourceLinkParams`.
+  `Course::get_lti_resource_links`, `Course::get_lti_resource_link`,
+  `Course::create_lti_resource_link`.
+- **`impl futures::Stream for PageStream<T>`** — `PageStream<T>` now directly
+  implements `futures::Stream` (gated on the `async` feature), enabling
+  `StreamExt` methods (`next()`, `map()`, `filter()`, `collect()`, etc.)
+  without any adapter. `collect_all()` remains available as a convenience.
+- **`#[derive(CanvasResource)]` proc-macro** — new `canvas-lms-api-derive`
+  workspace crate; generates the `fn req()` accessor on any resource struct
+  carrying a `requester: Option<Arc<Requester>>` field. Applied to all 18
+  existing resource structs and all new v0.4.0 structs.
+- `Requester::delete_void` — DELETE helper for 204 No Content responses
+  (used by poll deletes).
+- `Group` promoted to a requester-bearing resource struct, enabling
+  instance-level methods.
+
 ## [0.3.0] - 2026-05-20
 
 ### Added
@@ -105,6 +134,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI: fmt, clippy, tests, doc build, MSRV 1.75 check
 - MIT license
 
+[0.4.0]: https://github.com/RobertConde/canvas-lms-api/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/RobertConde/canvas-lms-api/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/RobertConde/canvas-lms-api/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/RobertConde/canvas-lms-api/compare/v0.1.1...v0.1.2

@@ -4,7 +4,7 @@ use serde_json::Value;
 use std::sync::Arc;
 
 /// A Canvas learning outcome.
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, canvas_lms_api_derive::CanvasResource)]
 pub struct Outcome {
     pub id: u64,
     pub url: Option<String>,
@@ -41,10 +41,6 @@ pub struct UpdateOutcomeParams {
 }
 
 impl Outcome {
-    fn req(&self) -> &Arc<Requester> {
-        self.requester.as_ref().expect("requester not initialized")
-    }
-
     /// Update this outcome.
     ///
     /// # Canvas API
@@ -62,7 +58,7 @@ impl Outcome {
 }
 
 /// A group of learning outcomes.
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, canvas_lms_api_derive::CanvasResource)]
 pub struct OutcomeGroup {
     pub id: u64,
     pub url: Option<String>,
@@ -90,10 +86,6 @@ pub struct UpdateOutcomeGroupParams {
 }
 
 impl OutcomeGroup {
-    fn req(&self) -> &Arc<Requester> {
-        self.requester.as_ref().expect("requester not initialized")
-    }
-
     fn context_path(&self) -> String {
         match self.context_type.as_deref() {
             Some("Course") => format!("courses/{}", self.context_id.unwrap_or_default()),

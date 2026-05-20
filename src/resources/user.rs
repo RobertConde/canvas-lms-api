@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
 /// A Canvas user.
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, canvas_lms_api_derive::CanvasResource)]
 pub struct User {
     pub id: u64,
     pub name: Option<String>,
@@ -31,10 +31,6 @@ pub struct User {
 }
 
 impl User {
-    fn req(&self) -> &Arc<Requester> {
-        self.requester.as_ref().expect("requester not initialized")
-    }
-
     /// Stream all courses for this user.
     ///
     /// # Canvas API

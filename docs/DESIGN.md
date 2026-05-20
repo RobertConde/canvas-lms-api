@@ -119,14 +119,14 @@ Maps HTTP status codes to typed variants, mirroring the Python exception hierarc
 
 ### `PageStream<T>` (`src/pagination.rs`)
 
-Async-lazy page fetcher implementing a manual async stream pattern. Callers use it with `futures::StreamExt`:
+Async-lazy page fetcher implementing `futures::Stream` directly (`async` feature). Callers use it with `futures::StreamExt` or the built-in `collect_all()`:
 
 ```rust
 use futures::StreamExt;
 let courses: Vec<_> = canvas.get_courses().collect_all().await?;
-// or one at a time:
+// or via StreamExt — next(), map(), filter(), collect(), etc.
 let mut stream = canvas.get_courses();
-while let Some(result) = stream.next_item().await {
+while let Some(result) = stream.next().await {
     let course = result?;
 }
 ```
@@ -271,16 +271,82 @@ AppointmentGroup, CalendarEvent, Conversation, EnrollmentTerm, EPortfolio/EPortf
 GradingPeriod, GradingStandard, JWT, ContentExport, GradeChangeLog, Feature/FeatureFlag,
 PlannerNote/PlannerOverride, Role. 214 tests, 0 clippy warnings.
 
-### v0.4.0
-- Polls (`Poll`, `PollChoice`, `PollSession`, `PollSubmission`) with full CRUD
-- Collaborations: list/get/create on courses and groups
-- LTI resource links: course-scoped list/create
-- `impl futures::Stream for PageStream<T>` — lazy page-by-page iteration via `StreamExt`
-  (`next()`, `map()`, `filter()`, etc.) without collecting everything upfront
-- Struct-level mutation tests for second-order objects (implemented but untested):
-  Rubric, RubricAssociation, RubricAssessment, OutcomeGroup, ContentMigration,
-  MigrationIssue, SisImport, Blueprint types
-- `#[derive(CanvasResource)]` proc-macro to reduce `Arc<Requester>` injection boilerplate
+### v0.4.0 (shipped)
+- **Polls** — `Poll`, `PollChoice`, `PollSession`, `PollSubmission` with full CRUD matching Python `canvasapi` surface (`update`, `delete`, `get_choice/choices`, `create_choice`, `get_session/sessions`, `create_session`, `open`/`close`, `get_submission`, `create_submission`). Client-level: `get_poll`, `get_polls`, `create_poll`.
+- **Collaborations** — `Collaboration` + `Collaborator` structs. `Course::get_collaborations()` and `Group::get_collaborations()` (Canvas API exposes list only; no create/get-single endpoint exists). `Collaboration::get_collaborators()` (`GET /collaborations/:id/members`).
+- **LTI Resource Links** — `LtiResourceLink` + `CreateLtiResourceLinkParams`. `Course::get_lti_resource_links()`, `Course::get_lti_resource_link()`, `Course::create_lti_resource_link()`.
+- **`impl futures::Stream for PageStream<T>`** — direct trait impl (gated on `async` feature) so callers use `StreamExt` (`next()`, `map()`, `filter()`, `collect()`, etc.) without an adapter. `Group` promoted from data-only to requester-bearing to support methods.
+- **`#[derive(CanvasResource)]`** — `canvas-lms-api-derive` proc-macro crate generates `fn req()` on any struct with a `requester: Option<Arc<Requester>>` field; applied to all 18 existing resource structs + new v0.4.0 structs.
+- 242 tests, 0 clippy warnings.
+
+### v0.5.0 — API Depth
+
+v0.5.0 fills the method gaps across all existing resources. v0.1–v0.4 added structs and basic CRUD; the resources below were identified as having zero or near-zero instance methods despite the Python library having substantial coverage.
+
+**Struct-only resources (0 instance methods today — full method impl needed):**
+
+| Resource | Key methods to add |
+|---|---|
+| `Submission` | `edit()` (grade/comment), `mark_read/unread()`, `upload_comment()`, peer review CRUD |
+| `Group` | `edit()`, `delete()`, member management, full content surface (files, pages, discussions, tabs, migrations) — `get_collaborations()` already added in v0.4.0 |
+| `GroupMembership` *(new struct)* | `update()`, `remove_self()`, `remove_user()` |
+| `GroupCategory` *(new struct)* | `get_groups()`, `create_group()`, `get_users()`, `assign_members()`, `update()`, `delete()` |
+| `Section` | `edit()`, `delete()`, `enroll_user()`, `get_enrollments()`, `cross_list_section()`, `decross_list_section()`, `get_assignment_override()` |
+| `Module` | `edit()`, `delete()`, `get_module_items()`, `get_module_item()`, `create_module_item()`, `relock()` |
+| `ModuleItem` | `edit()`, `delete()`, `complete()`, `uncomplete()` |
+| `DiscussionTopic` | `update()`, `delete()`, `post_entry()`, `get_topic_entries()`, `get_entries()`, `mark_as_read/unread()`, `mark_entries_as_read/unread()`, `subscribe/unsubscribe()`, `get_parent()` |
+| `DiscussionEntry` *(new struct)* | `update()`, `delete()`, `post_reply()`, `get_replies()`, `mark_as_read/unread()`, `rate()`, `get_discussion()` |
+| `Page` | `edit()`, `delete()`, `get_revisions()`, `get_revision_by_id()`, `show_latest_revision()`, `revert_to_revision()`, `get_parent()` |
+| `PageRevision` *(new struct)* | `get_parent()` |
+| `File` | `update()`, `delete()`, `get_contents()`, `download()` |
+| `Folder` | `update()`, `delete()`, `get_files()`, `get_folders()`, `create_folder()`, `copy_file()`, `upload()` |
+| `Enrollment` | `accept()`, `reject()`, `deactivate()`, `reactivate()` |
+| `Tab` | `update()` |
+
+**Assignment depth** — `Assignment` struct has no instance methods today:
+- `edit()`, `delete()`, `create_override()`, `get_override()`, `get_overrides()`, `get_submissions()`, `get_submission()`, `submit()`, `upload_to_submission()`, `get_peer_reviews()`, `get_gradeable_students()`, `set_extensions()`, `submissions_bulk_update()`, moderated grading methods, `get_grade_change_events()`
+- New structs: `AssignmentGroup` (`edit`, `delete`), `AssignmentOverride` (`edit`, `delete`)
+- New Course methods: `get_assignment_groups()`, `create_assignment_group()`, `create_assignment_overrides()`, `update_assignment_overrides()`, `get_assignments_for_group()`
+
+**Quiz depth** — `Quiz` struct has no instance methods today:
+- `edit()`, `delete()`, question CRUD, question group CRUD, submission lifecycle, reports, `get_statistics()`, `set_extensions()`, `broadcast_message()`, moderated quiz methods
+- New structs: `QuizQuestion`, `QuizSubmission`, `QuizSubmissionQuestion`
+
+**User depth** — `User` has ~5 methods vs ~48 in Python:
+- Profile: `edit()`, `merge_into()`, `get_profile()`, `update_settings()`, `terminate_sessions()`
+- Observees/observers: `get_observees()`, `add_observee()`, `remove_observee()`, `show_observee()`, `get_observers()`, `create_pairing_code()`
+- Dashboard colors: `get_colors()`, `get_color()`, `update_color()`
+- Content: `get_files()`, `get_folders()`, `create_folder()`, `upload()`, `get_file_quota()`, `resolve_path()`
+- Cross-course: `get_assignments()`, `get_missing_submissions()`
+- Misc: `get_avatars()`, `get_page_views()`, `get_user_logins()`, `get_authentication_events()`, grade change events, features, content exports, ePortfolios
+
+**Course depth** — ~80 methods still missing:
+- Lifecycle: `conclude()`, `reset()`
+- Settings: `get_settings()`, `update_settings()`
+- Late policy: `get_late_policy()`, `create_late_policy()`, `edit_late_policy()`
+- Custom gradebook columns: `get_custom_columns()`, `create_custom_column()`, `column_data_bulk_update()`
+- Bulk submissions: `get_multiple_submissions()`, `submissions_bulk_update()`
+- Analytics: course-level and user-in-course assignment/participation/summary data
+- Outcomes: `get_all_outcome_links_in_context()`, `get_outcome_results()`, `get_outcome_result_rollups()`, `import_outcome()`
+- Group categories, external feeds, epub exports, usage rights, file quota, grading standards CRUD, New Quizzes CRUD
+
+**Account depth** — ~50 methods still missing:
+- Sub-accounts, admin management, user management, auth providers, SSO settings
+- Department-level analytics (6 methods), notifications, reports, outcome imports
+- `create_account()`, `update()`, `delete()`
+
+**Small gaps in already-covered resources:**
+
+| Resource | Missing |
+|---|---|
+| `ExternalTool` | `get_parent()`, `get_sessionless_launch_url()` |
+| `ContentMigration` | `get_parent()`, `get_progress()`, `get_selective_data()` |
+| `BlueprintTemplate` | `change_blueprint_restrictions()` |
+| `OutcomeGroup` | `import_outcome_group()` |
+| `OutcomeLink` | `get_outcome()`, `get_outcome_group()` |
+| `CommunicationChannel` | `update_multiple_preferences()` |
+| `FeatureFlag` | `delete()`, `set_feature_flag()` |
+| `Progress` | `query()` — poll for updated status |
 
 ### v1.0.0
 Full API surface. Semver stability guarantee. MSRV policy pinned to N-2 stable.

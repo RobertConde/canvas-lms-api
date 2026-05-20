@@ -4,7 +4,7 @@ use serde_json::Value;
 use std::sync::Arc;
 
 /// A Canvas external (LTI) tool.
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, canvas_lms_api_derive::CanvasResource)]
 pub struct ExternalTool {
     pub id: u64,
     pub name: Option<String>,
@@ -49,10 +49,6 @@ pub struct ExternalToolParams {
 }
 
 impl ExternalTool {
-    fn req(&self) -> &Arc<Requester> {
-        self.requester.as_ref().expect("requester not initialized")
-    }
-
     fn parent_type(&self) -> &'static str {
         if self.course_id.is_some() {
             "course"

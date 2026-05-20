@@ -20,7 +20,7 @@ pub struct ConversationMessage {
     pub generated: Option<bool>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, canvas_lms_api_derive::CanvasResource)]
 pub struct Conversation {
     pub id: u64,
     pub subject: Option<String>,
@@ -51,10 +51,6 @@ pub struct ConversationParams {
 }
 
 impl Conversation {
-    fn req(&self) -> &Arc<Requester> {
-        self.requester.as_ref().expect("requester not injected")
-    }
-
     fn endpoint(&self) -> String {
         format!("conversations/{}", self.id)
     }

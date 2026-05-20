@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
 /// A SIS import job.
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, canvas_lms_api_derive::CanvasResource)]
 pub struct SisImport {
     pub id: u64,
     pub account_id: Option<u64>,
@@ -59,10 +59,6 @@ pub struct SisImportCounts {
 }
 
 impl SisImport {
-    fn req(&self) -> &Arc<Requester> {
-        self.requester.as_ref().expect("requester not initialized")
-    }
-
     fn account_id(&self) -> u64 {
         self.account_id.expect("SisImport missing account_id")
     }

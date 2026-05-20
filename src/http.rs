@@ -99,6 +99,20 @@ impl Requester {
         Ok(resp.json().await?)
     }
 
+    /// DELETE an endpoint and discard the response body (for 204 No Content responses).
+    pub(crate) async fn delete_void(&self, endpoint: &str) -> Result<()> {
+        let url = self.base_url.join(endpoint)?;
+        info!("DELETE {url}");
+        let resp = self
+            .client
+            .delete(url)
+            .header("Authorization", self.auth_header())
+            .send()
+            .await?;
+        check_status(resp).await?;
+        Ok(())
+    }
+
     pub(crate) async fn delete<T: DeserializeOwned>(
         &self,
         endpoint: &str,

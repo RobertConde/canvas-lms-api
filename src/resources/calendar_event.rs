@@ -3,7 +3,7 @@ use crate::http::Requester;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, canvas_lms_api_derive::CanvasResource)]
 pub struct CalendarEvent {
     pub id: u64,
     pub title: Option<String>,
@@ -42,10 +42,6 @@ pub struct CalendarEventParams {
 }
 
 impl CalendarEvent {
-    fn req(&self) -> &Arc<Requester> {
-        self.requester.as_ref().expect("requester not injected")
-    }
-
     fn endpoint(&self) -> String {
         format!("calendar_events/{}", self.id)
     }

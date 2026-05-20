@@ -6,6 +6,7 @@ use crate::{
     resources::{
         assignment::Assignment,
         blueprint::{BlueprintSubscription, BlueprintTemplate},
+        collaboration::Collaboration,
         content_export::{ContentExport, ContentExportParams},
         content_migration::{ContentMigration, Migrator},
         discussion_topic::DiscussionTopic,
@@ -18,6 +19,7 @@ use crate::{
         grading_period::GradingPeriod,
         grading_standard::GradingStandard,
         group::Group,
+        lti_resource_link::{CreateLtiResourceLinkParams, LtiResourceLink},
         module::Module,
         outcome::{OutcomeGroup, OutcomeLink, UpdateOutcomeGroupParams},
         page::Page,
@@ -37,7 +39,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, canvas_lms_api_derive::CanvasResource)]
 pub struct Course {
     pub id: u64,
     pub name: Option<String>,
@@ -67,10 +69,6 @@ pub struct Course {
 }
 
 impl Course {
-    fn req(&self) -> &Arc<Requester> {
-        self.requester.as_ref().expect("requester not initialized")
-    }
-
     /// Stream all assignments in this course.
     ///
     /// # Canvas API
@@ -307,15 +305,40 @@ impl Course {
         )
     }
 
+    /// Stream all collaborations in this course.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:id/collaborations`
+    pub fn get_collaborations(&self) -> PageStream<Collaboration> {
+        let course_id = self.id;
+        PageStream::new_with_injector(
+            Arc::clone(self.req()),
+            &format!("courses/{course_id}/collaborations"),
+            vec![],
+            {
+                let req = Arc::clone(self.req());
+                move |mut c: Collaboration, _| {
+                    c.requester = Some(Arc::clone(&req));
+                    c
+                }
+            },
+        )
+    }
+
     /// Stream all groups in this course.
     ///
     /// # Canvas API
     /// `GET /api/v1/courses/:id/groups`
     pub fn get_groups(&self) -> PageStream<Group> {
-        PageStream::new(
+        let course_id = self.id;
+        PageStream::new_with_injector(
             Arc::clone(self.req()),
-            &format!("courses/{}/groups", self.id),
+            &format!("courses/{course_id}/groups"),
             vec![],
+            |mut g: Group, req| {
+                g.requester = Some(Arc::clone(&req));
+                g
+            },
         )
     }
 
@@ -909,6 +932,49 @@ impl Course {
     pub async fn get_enabled_features(&self) -> Result<Vec<String>> {
         self.req()
             .get(&format!("courses/{}/features/enabled", self.id), &[])
+            .await
+    }
+
+    // -------------------------------------------------------------------------
+    // LTI Resource Links
+    // -------------------------------------------------------------------------
+
+    /// Stream all LTI resource links in this course.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/lti_resource_links`
+    pub fn get_lti_resource_links(&self) -> PageStream<LtiResourceLink> {
+        PageStream::new(
+            Arc::clone(self.req()),
+            &format!("courses/{}/lti_resource_links", self.id),
+            vec![],
+        )
+    }
+
+    /// Fetch a single LTI resource link.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/lti_resource_links/:id`
+    pub async fn get_lti_resource_link(&self, link_id: u64) -> Result<LtiResourceLink> {
+        self.req()
+            .get(
+                &format!("courses/{}/lti_resource_links/{link_id}", self.id),
+                &[],
+            )
+            .await
+    }
+
+    /// Create a new LTI resource link in this course.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/courses/:course_id/lti_resource_links`
+    pub async fn create_lti_resource_link(
+        &self,
+        params: CreateLtiResourceLinkParams,
+    ) -> Result<LtiResourceLink> {
+        let form = crate::params::flatten_params(&serde_json::to_value(&params).unwrap());
+        self.req()
+            .post(&format!("courses/{}/lti_resource_links", self.id), &form)
             .await
     }
 }

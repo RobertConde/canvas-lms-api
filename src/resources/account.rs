@@ -21,7 +21,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
 /// A Canvas account (institution, sub-account, or department).
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, canvas_lms_api_derive::CanvasResource)]
 pub struct Account {
     pub id: u64,
     pub name: Option<String>,
@@ -42,10 +42,6 @@ pub struct Account {
 }
 
 impl Account {
-    fn req(&self) -> &Arc<Requester> {
-        self.requester.as_ref().expect("requester not initialized")
-    }
-
     // -------------------------------------------------------------------------
     // Account Calendars
     // -------------------------------------------------------------------------

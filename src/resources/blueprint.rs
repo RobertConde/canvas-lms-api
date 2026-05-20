@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
 /// A blueprint template for a Canvas master course.
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, canvas_lms_api_derive::CanvasResource)]
 pub struct BlueprintTemplate {
     pub id: u64,
     pub course_id: Option<u64>,
@@ -17,10 +17,6 @@ pub struct BlueprintTemplate {
 }
 
 impl BlueprintTemplate {
-    fn req(&self) -> &Arc<Requester> {
-        self.requester.as_ref().expect("requester not initialized")
-    }
-
     fn course_id(&self) -> u64 {
         self.course_id.expect("BlueprintTemplate missing course_id")
     }
@@ -143,7 +139,7 @@ impl BlueprintTemplate {
 }
 
 /// A migration that pushes blueprint content to associated courses.
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, canvas_lms_api_derive::CanvasResource)]
 pub struct BlueprintMigration {
     pub id: u64,
     pub template_id: Option<u64>,
@@ -162,10 +158,6 @@ pub struct BlueprintMigration {
 }
 
 impl BlueprintMigration {
-    fn req(&self) -> &Arc<Requester> {
-        self.requester.as_ref().expect("requester not initialized")
-    }
-
     fn course_id(&self) -> u64 {
         self.course_id
             .expect("BlueprintMigration missing course_id")
@@ -227,7 +219,7 @@ pub struct ChangeRecord {
 }
 
 /// A blueprint subscription on a child (associated) course.
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, canvas_lms_api_derive::CanvasResource)]
 pub struct BlueprintSubscription {
     pub id: u64,
     pub template_id: Option<u64>,
@@ -239,10 +231,6 @@ pub struct BlueprintSubscription {
 }
 
 impl BlueprintSubscription {
-    fn req(&self) -> &Arc<Requester> {
-        self.requester.as_ref().expect("requester not initialized")
-    }
-
     fn course_id(&self) -> u64 {
         self.course_id
             .expect("BlueprintSubscription missing course_id")

@@ -70,6 +70,13 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo publish
+      - name: Publish canvas-lms-api-derive
+        run: cargo publish --manifest-path canvas-lms-api-derive/Cargo.toml
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+      - name: Wait for derive crate to be indexed
+        run: sleep 30
+      - name: Publish canvas-lms-api
+        run: cargo publish
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}

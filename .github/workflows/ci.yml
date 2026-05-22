@@ -73,7 +73,7 @@ jobs:
       - name: Publish canvas-lms-api-derive
         run: |
           LOCAL=$(cargo metadata --manifest-path canvas-lms-api-derive/Cargo.toml --no-deps --format-version 1 | jq -r '.packages[0].version')
-          PUBLISHED=$(cargo search canvas-lms-api-derive --limit 1 | awk '/^canvas-lms-api-derive/{print $3}' | tr -d '"')
+          PUBLISHED=$(cargo search canvas-lms-api-derive --limit 1 --color never | awk '/^canvas-lms-api-derive/{print $3}' | tr -d '"')
           if [ "$LOCAL" = "$PUBLISHED" ]; then
             echo "canvas-lms-api-derive $LOCAL already published, skipping."
           else

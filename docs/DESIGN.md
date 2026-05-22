@@ -279,7 +279,7 @@ PlannerNote/PlannerOverride, Role. 214 tests, 0 clippy warnings.
 - **`#[derive(CanvasResource)]`** — `canvas-lms-api-derive` proc-macro crate generates `fn req()` on any struct with a `requester: Option<Arc<Requester>>` field; applied to all 18 existing resource structs + new v0.4.0 structs.
 - 242 tests, 0 clippy warnings.
 
-### v0.5.0 — API Depth
+### v0.5.0 — API Depth (shipped) ✓
 
 v0.5.0 fills the method gaps across all existing resources. v0.1–v0.4 added structs and basic CRUD; the resources below were identified as having zero or near-zero instance methods despite the Python library having substantial coverage.
 
@@ -433,6 +433,129 @@ Tests: extend `tests/account_test.rs`
 | `ContentMigration` | `get_progress()`, `get_selective_data()` |
 | `OutcomeGroup` | `import_outcome_group()` |
 | `CommunicationChannel` | `update_multiple_preferences()` |
+
+### v0.6.0 (shipped) ✓
+
+**504 tests, 0 failures.** All three CI matrix configs clean.
+
+| Batch | What was delivered |
+|---|---|
+| 1 | `CustomGradebookColumn` struct + methods; dedicated test files for `ContentMigration`, `ExternalTool`, `Outcome`/`OutcomeGroup`, `SisImport`, `CustomGradebookColumn` |
+| 2 | Quiz extended depth: `QuizGroup`, `QuizReport`, quiz reports/events, flag/unflag, `answer_submission_questions` |
+| 3 | Two-step Canvas file upload (`src/upload.rs`); `upload_file` on `Folder`, `User`, `Group` |
+| 4 | User remaining: `get_file`, `get_folder`, `resolve_path`, grade change events, content migration methods, `get_feature_flag` |
+| 5 | Group remaining: `show_front_page`, `edit_front_page`, `get_file_quota`, `get_external_feeds`, `create/delete_external_feed`, `get_assignment_override`, `set/remove_usage_rights`, `get_licenses` |
+| 6 | Assignment extended: `get_grade_change_events`, moderated grading endpoints (provisional grades, `select_students_for_moderation`, `publish_provisional_grades`, `show_provisional_grades_for_student`) |
+
+---
+
+### v0.7.0 — Plan
+
+**Start count: 504 tests. Target: ~650 tests.**
+
+Goals: fill Account test gaps + missing methods; add missing Course methods; implement Rubric resource; fill Group/User remaining depth; add Login resource; tighten ExternalTool and OutcomeImport.
+
+#### Batch 1 — Account: test coverage + missing methods
+
+Python ref: `tests/test_account.py`
+
+**Add tests** for already-implemented Account methods that currently have no test coverage:
+- Content exports: `get_content_export`, `get_content_exports`, `create_content_export`
+- Content migrations: `get_content_migration`, `get_content_migrations`, `create_content_migration`, `get_migrators`
+- Enrollment terms: `get_enrollment_term`, `get_enrollment_terms`, `create_enrollment_term`
+- External tools: `get_external_tool`, `get_external_tools`, `create_external_tool`
+- Feature flags: `get_feature_flag`, `get_features`
+- Grading standards: `get_grading_standard`, `get_grading_standards`
+- Outcome groups: `get_outcome_group`, `get_outcome_group_links`
+- Roles: `get_role`, `get_roles`, `update_role`
+- SIS imports: `get_sis_import`, `get_sis_imports`, `get_sis_imports_running`
+
+**Add missing Account methods** (not yet in Rust):
+- `create_course(params)` → `POST /api/v1/accounts/:id/courses` → `Course`
+- `create_sis_import(params)` → `POST /api/v1/accounts/:id/sis_imports` → `SisImport`
+- `delete_admin(user_id)` → `DELETE /api/v1/accounts/:id/admins/:user_id` → `Value`
+- `delete_grading_period(id)` → `DELETE /api/v1/accounts/:id/grading_periods/:id` → `()`
+- `get_enrollment(id)` → `GET /api/v1/accounts/:id/enrollments/:id` → `Enrollment`
+- `get_authentication_events()` → `GET /api/v1/audit/authentication/accounts/:id` → `PageStream<Value>`
+
+#### Batch 2 — Course: missing methods
+
+Python ref: `tests/test_course.py`
+
+Add to `src/resources/course.rs` (all need tests in `tests/course_extra_test.rs` or new `course_methods2_test.rs`):
+
+- **Front page**: `show_front_page()` → `GET .../front_page` → `Page`; `edit_front_page(params)` → `PUT`
+- **Content**: `export_content(type)`, `get_full_discussion_topic(id)`, `preview_html(html)`, `reorder_pinned_topics(order)`
+- **Users**: `get_user(id)` → `GET .../users/:id`; `get_recent_students()`
+- **Files/rights**: `upload_file(request, data)` (two-step, same pattern as Group); `set_usage_rights(params)`; `remove_usage_rights(params)`; `get_licenses()`
+- **External feeds**: `get_external_feeds()`, `create_external_feed(url)`, `delete_external_feed(id)`
+- **Sections**: `create_course_section(name)` → `POST .../sections` → `Section`
+
+#### Batch 3 — Rubric resource (entirely new)
+
+Python ref: `tests/test_rubric.py`
+
+New `Rubric` and `RubricAssociation` structs in `src/resources/rubric.rs`. Fields: `id`, `title`, `context_id`, `context_type`, `points_possible`, `reusable`, `read_only`, `free_form_criterion_comments`, `hide_score_total`, `data` (criteria array).
+
+`RubricAssociation` methods: `update(params)`, `delete()`.
+
+Add to `Account`: `get_rubric(id)`, `get_rubrics()`.
+Add to `Course`: `get_rubric(id)`, `get_rubrics()`, `create_rubric(params)`, `create_rubric_association(params)`, `get_rubric_association(id)`, `get_rubric_associations()`.
+
+Note: `create_rubric` response envelope is `{"rubric": {...}, "rubric_association": {...}}` — extract `rubric` key.
+
+Tests: `tests/rubric_test.rs` (target: ~12 tests)
+
+#### Batch 4 — Group + User remaining gaps
+
+Python refs: `tests/test_group.py`, `tests/test_user.py`
+
+**Group** (add to `src/resources/group.rs`):
+- `create_content_migration(migration_type)`, `get_content_migration(id)`, `get_migration_systems()`
+- `export_content(type)`, `get_content_export(id)`
+- `get_full_discussion_topic(id)`, `get_activity_stream_summary()`, `reorder_pinned_topics(order)`
+
+**User** (add to `src/resources/user.rs`):
+- `add_observee_with_credentials(params)` — same endpoint as `add_observee` but sends credentials
+- `get_calendar_events(params)` → `GET /api/v1/users/:id/calendar_events`
+- `get_content_export(id)`, `get_licenses()`
+- `set_usage_rights(params)`, `remove_usage_rights(params)`
+
+#### Batch 5 — Login resource (entirely new)
+
+Python ref: `tests/test_login.py`
+
+New `Login` struct in `src/resources/login.rs`. Fields: `id`, `account_id`, `user_id`, `workflow_state`, `unique_id`, `sis_user_id`, `integration_id`, `authentication_provider_id`.
+
+`Login` methods:
+- `edit(params)` → `PUT /api/v1/accounts/:account_id/logins/:id` → `Login`
+- `delete()` → `DELETE /api/v1/accounts/:account_id/logins/:id` → `()`
+
+Add to `Account`:
+- `get_user_logins(user_id)` → `GET /api/v1/accounts/:id/logins?user_id=:user_id` → `PageStream<Login>`
+- `create_user_login(params)` → `POST /api/v1/accounts/:id/logins` → `Login`
+
+`Login` needs `account_id` injected at call sites so its instance methods can form the URL.
+
+Tests: `tests/login_test.rs` (target: ~6 tests)
+
+#### Batch 6 — ExternalTool sessionless launch + OutcomeImport
+
+Python refs: `tests/test_external_tool.py`, `tests/test_outcome_import.py`
+
+**ExternalTool**:
+- `get_sessionless_launch_url(params)` → `GET /api/v1/:context/external_tools/sessionless_launch`
+  Uses existing `context_type` + `context_id` fields. Returns `Value`.
+
+**OutcomeImport** (formalize the existing raw-JSON approach):
+- New `OutcomeImport` struct with `id`, `account_id`, `course_id`, `workflow_state`, `progress`.
+- `OutcomeImport::get_progress()` → `GET /api/v1/:context/outcome_imports/:id`
+- Add `Account::import_outcomes(params)` → `POST /api/v1/accounts/:id/outcome_imports` → `OutcomeImport`
+- Add `Course::import_outcomes(params)` + `Course::get_outcome_import_status(id)` → `OutcomeImport`
+
+Tests: extend `tests/external_tool_test.rs`; extend `tests/outcome_test.rs` or new `tests/outcome_import_test.rs`
+
+---
 
 ### v1.0.0
 Full API surface. Semver stability guarantee. MSRV policy pinned to N-2 stable.

@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-05-23
+
+### Added
+- **CustomGradebookColumn** — new struct with `update`, `delete`, `get_column_data`,
+  `update_column_data`; `Course::get_custom_columns`, `create_custom_column`
+- **Quiz extended depth**
+  - `QuizGroup` struct with `update`, `delete`
+  - `QuizReport` struct
+  - New `Quiz` methods: `abort_or_delete`, `get_quiz_group`, `create_question_group`,
+    `create_report`, `get_all_quiz_reports`, `get_quiz_report`, `get_submission_events`,
+    `submit_events`
+  - New `QuizSubmission` methods: `flag`, `unflag`, `answer_submission_questions`
+- **Two-step Canvas file upload** — `src/upload.rs` `initiate_and_upload` helper;
+  `Folder::upload_file`, `User::upload_file`, `Group::upload_file`
+- **User** — `get_file`, `get_folder`, `resolve_path`, `get_grade_change_events_for_grader`,
+  `get_grade_change_events_for_student`, `get_content_migration`, `get_content_migrations`,
+  `create_content_migration`, `get_migration_systems`, `get_feature_flag`
+- **Group** — `show_front_page`, `edit_front_page`, `get_file_quota`, `get_external_feeds`,
+  `create_external_feed`, `delete_external_feed`, `get_assignment_override`,
+  `set_usage_rights`, `remove_usage_rights`, `get_licenses`
+- **Assignment** — `get_grade_change_events`, `get_students_selected_for_moderation`,
+  `select_students_for_moderation`, `get_provisional_grades_status`,
+  `selected_provisional_grade`, `publish_provisional_grades`,
+  `show_provisional_grades_for_student`
+- **New test files** — `content_migration_test.rs`, `external_tool_test.rs`,
+  `outcome_test.rs`, `sis_import_test.rs`, `custom_gradebook_columns_test.rs`,
+  `quiz_group_test.rs`, `upload_test.rs` (504 tests total, up from 427)
+
+### Fixed
+- `pagination.rs` — gated `Context`, `Poll`, `Future`, `Pin`, and `PendingFetch` type alias
+  on `#[cfg(feature = "async")]` so the `blocking`-only CI configuration compiles clean
+
 ## [0.5.1] - 2026-05-22
 
 ### Fixed
@@ -222,6 +254,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI: fmt, clippy, tests, doc build, MSRV 1.75 check
 - MIT license
 
+[0.6.0]: https://github.com/RobertConde/canvas-lms-api/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/RobertConde/canvas-lms-api/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/RobertConde/canvas-lms-api/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/RobertConde/canvas-lms-api/compare/v0.3.0...v0.4.0

@@ -437,3 +437,168 @@ async fn test_assignment_set_extensions() {
         .unwrap();
     assert!(result.get("assignment_extensions").is_some());
 }
+
+#[tokio::test]
+async fn test_assignment_get_grade_change_events() {
+    let server = MockServer::start().await;
+    let assignment = setup(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/audit/grade_change/assignments/2"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "events": [
+                {
+                    "id": "dd5-6a",
+                    "event_type": "grade_change",
+                    "grade_before": "5",
+                    "grade_after": "2",
+                    "links": {"assignment": 10, "course": 1}
+                },
+                {
+                    "id": "fg-43",
+                    "event_type": "grade_change",
+                    "grade_before": null,
+                    "grade_after": "5",
+                    "links": {"assignment": 10, "course": 1}
+                }
+            ]
+        })))
+        .mount(&server)
+        .await;
+
+    let events = assignment
+        .get_grade_change_events()
+        .collect_all()
+        .await
+        .unwrap();
+    assert_eq!(events.len(), 2);
+    assert_eq!(events[0]["event_type"], "grade_change");
+    assert_eq!(events[1]["id"], "fg-43");
+}
+
+#[tokio::test]
+async fn test_assignment_get_students_selected_for_moderation() {
+    let server = MockServer::start().await;
+    let assignment = setup(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/assignments/2/moderated_students"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"id": 1, "name": "John Doe"},
+            {"id": 2, "name": "John Smith"}
+        ])))
+        .mount(&server)
+        .await;
+
+    let students = assignment
+        .get_students_selected_for_moderation()
+        .collect_all()
+        .await
+        .unwrap();
+    assert_eq!(students.len(), 2);
+    assert_eq!(students[0].id, 1);
+}
+
+#[tokio::test]
+async fn test_assignment_select_students_for_moderation() {
+    let server = MockServer::start().await;
+    let assignment = setup(&server).await;
+
+    Mock::given(method("POST"))
+        .and(path("/api/v1/courses/1/assignments/2/moderated_students"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"id": 11, "name": "Joyce Smith"},
+            {"id": 12, "name": "Jane Doe"}
+        ])))
+        .mount(&server)
+        .await;
+
+    let selected = assignment
+        .select_students_for_moderation(&[11, 12])
+        .await
+        .unwrap();
+    assert_eq!(selected.len(), 2);
+    assert_eq!(selected[0]["id"], 11);
+}
+
+#[tokio::test]
+async fn test_assignment_get_provisional_grades_status() {
+    let server = MockServer::start().await;
+    let assignment = setup(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path(
+            "/api/v1/courses/1/assignments/2/provisional_grades/status",
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "needs_provisional_grade": false
+        })))
+        .mount(&server)
+        .await;
+
+    let status = assignment.get_provisional_grades_status(1).await.unwrap();
+    assert_eq!(status["needs_provisional_grade"], false);
+}
+
+#[tokio::test]
+async fn test_assignment_selected_provisional_grade() {
+    let server = MockServer::start().await;
+    let assignment = setup(&server).await;
+
+    Mock::given(method("PUT"))
+        .and(path(
+            "/api/v1/courses/1/assignments/2/provisional_grades/1/select",
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "assignment_id": 2,
+            "student_id": 5,
+            "provisional_grade_id": 1
+        })))
+        .mount(&server)
+        .await;
+
+    let result = assignment.selected_provisional_grade(1).await.unwrap();
+    assert_eq!(result["assignment_id"], 2);
+    assert_eq!(result["provisional_grade_id"], 1);
+}
+
+#[tokio::test]
+async fn test_assignment_publish_provisional_grades() {
+    let server = MockServer::start().await;
+    let assignment = setup(&server).await;
+
+    Mock::given(method("POST"))
+        .and(path(
+            "/api/v1/courses/1/assignments/2/provisional_grades/publish",
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "message": "OK"
+        })))
+        .mount(&server)
+        .await;
+
+    let result = assignment.publish_provisional_grades().await.unwrap();
+    assert_eq!(result["message"], "OK");
+}
+
+#[tokio::test]
+async fn test_assignment_show_provisional_grades_for_student() {
+    let server = MockServer::start().await;
+    let assignment = setup(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path(
+            "/api/v1/courses/1/assignments/2/anonymous_provisional_grades/status",
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "needs_provisional_grade": false
+        })))
+        .mount(&server)
+        .await;
+
+    let result = assignment
+        .show_provisional_grades_for_student(1)
+        .await
+        .unwrap();
+    assert_eq!(result["needs_provisional_grade"], false);
+}

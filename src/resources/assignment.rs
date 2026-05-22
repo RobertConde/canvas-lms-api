@@ -342,6 +342,152 @@ impl Assignment {
             .await
     }
 
+    /// Stream grade change events for this assignment.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/audit/grade_change/assignments/:id`
+    pub fn get_grade_change_events(&self) -> PageStream<serde_json::Value> {
+        PageStream::new(
+            Arc::clone(self.req()),
+            &format!("audit/grade_change/assignments/{}", self.id),
+            vec![],
+        )
+    }
+
+    /// Stream students selected for moderation on this assignment.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/assignments/:id/moderated_students`
+    pub fn get_students_selected_for_moderation(&self) -> PageStream<User> {
+        let course_id = self.course_id.unwrap_or(0);
+        PageStream::new(
+            Arc::clone(self.req()),
+            &format!(
+                "courses/{course_id}/assignments/{}/moderated_students",
+                self.id
+            ),
+            vec![],
+        )
+    }
+
+    /// Select students for moderation on this assignment.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/courses/:course_id/assignments/:id/moderated_students`
+    pub async fn select_students_for_moderation(
+        &self,
+        student_ids: &[u64],
+    ) -> Result<Vec<serde_json::Value>> {
+        let course_id = self.course_id.ok_or_else(|| CanvasError::BadRequest {
+            message: "Assignment has no course_id".to_string(),
+            errors: vec![],
+        })?;
+        let params: Vec<(String, String)> = student_ids
+            .iter()
+            .map(|id| ("student_ids[]".to_string(), id.to_string()))
+            .collect();
+        self.req()
+            .post(
+                &format!(
+                    "courses/{course_id}/assignments/{}/moderated_students",
+                    self.id
+                ),
+                &params,
+            )
+            .await
+    }
+
+    /// Check whether a student's submission needs a provisional grade.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/assignments/:id/provisional_grades/status`
+    pub async fn get_provisional_grades_status(
+        &self,
+        student_id: u64,
+    ) -> Result<serde_json::Value> {
+        let course_id = self.course_id.ok_or_else(|| CanvasError::BadRequest {
+            message: "Assignment has no course_id".to_string(),
+            errors: vec![],
+        })?;
+        let params = vec![("student_id".to_string(), student_id.to_string())];
+        self.req()
+            .get(
+                &format!(
+                    "courses/{course_id}/assignments/{}/provisional_grades/status",
+                    self.id
+                ),
+                &params,
+            )
+            .await
+    }
+
+    /// Select which provisional grade the student should receive.
+    ///
+    /// # Canvas API
+    /// `PUT /api/v1/courses/:course_id/assignments/:id/provisional_grades/:provisional_grade_id/select`
+    pub async fn selected_provisional_grade(
+        &self,
+        provisional_grade_id: u64,
+    ) -> Result<serde_json::Value> {
+        let course_id = self.course_id.ok_or_else(|| CanvasError::BadRequest {
+            message: "Assignment has no course_id".to_string(),
+            errors: vec![],
+        })?;
+        self.req()
+            .put(
+                &format!(
+                    "courses/{course_id}/assignments/{}/provisional_grades/{provisional_grade_id}/select",
+                    self.id
+                ),
+                &[],
+            )
+            .await
+    }
+
+    /// Publish provisional grades for all submissions on this assignment.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/courses/:course_id/assignments/:id/provisional_grades/publish`
+    pub async fn publish_provisional_grades(&self) -> Result<serde_json::Value> {
+        let course_id = self.course_id.ok_or_else(|| CanvasError::BadRequest {
+            message: "Assignment has no course_id".to_string(),
+            errors: vec![],
+        })?;
+        self.req()
+            .post(
+                &format!(
+                    "courses/{course_id}/assignments/{}/provisional_grades/publish",
+                    self.id
+                ),
+                &[],
+            )
+            .await
+    }
+
+    /// Show whether a student's submission needs a provisional grade (anonymous grading).
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/assignments/:id/anonymous_provisional_grades/status`
+    pub async fn show_provisional_grades_for_student(
+        &self,
+        anonymous_id: u64,
+    ) -> Result<serde_json::Value> {
+        let course_id = self.course_id.ok_or_else(|| CanvasError::BadRequest {
+            message: "Assignment has no course_id".to_string(),
+            errors: vec![],
+        })?;
+        let params = vec![("anonymous_id".to_string(), anonymous_id.to_string())];
+        self.req()
+            .get(
+                &format!(
+                    "courses/{course_id}/assignments/{}/anonymous_provisional_grades/status",
+                    self.id
+                ),
+                &params,
+            )
+            .await
+    }
+
     /// Bulk-update grades for this assignment asynchronously.
     ///
     /// # Canvas API

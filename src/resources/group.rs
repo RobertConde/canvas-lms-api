@@ -470,6 +470,125 @@ impl Group {
         )
     }
 
+    /// Retrieve the front page of this group.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/groups/:id/front_page`
+    pub async fn show_front_page(&self) -> Result<Page> {
+        let mut p: Page = self
+            .req()
+            .get(&format!("groups/{}/front_page", self.id), &[])
+            .await?;
+        p.group_id = Some(self.id);
+        p.requester = self.requester.clone();
+        Ok(p)
+    }
+
+    /// Update the front page of this group.
+    ///
+    /// # Canvas API
+    /// `PUT /api/v1/groups/:id/front_page`
+    pub async fn edit_front_page(&self, params: &[(String, String)]) -> Result<Page> {
+        let mut p: Page = self
+            .req()
+            .put(&format!("groups/{}/front_page", self.id), params)
+            .await?;
+        p.group_id = Some(self.id);
+        p.requester = self.requester.clone();
+        Ok(p)
+    }
+
+    /// Return the file storage quota for this group.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/groups/:id/files/quota`
+    pub async fn get_file_quota(&self) -> Result<serde_json::Value> {
+        self.req()
+            .get(&format!("groups/{}/files/quota", self.id), &[])
+            .await
+    }
+
+    /// Stream all external feeds for this group.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/groups/:id/external_feeds`
+    pub fn get_external_feeds(&self) -> PageStream<serde_json::Value> {
+        PageStream::new(
+            Arc::clone(self.req()),
+            &format!("groups/{}/external_feeds", self.id),
+            vec![],
+        )
+    }
+
+    /// Create an external feed for this group.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/groups/:id/external_feeds`
+    pub async fn create_external_feed(&self, url: &str) -> Result<serde_json::Value> {
+        let params = vec![("url".to_string(), url.to_string())];
+        self.req()
+            .post(&format!("groups/{}/external_feeds", self.id), &params)
+            .await
+    }
+
+    /// Delete an external feed from this group.
+    ///
+    /// # Canvas API
+    /// `DELETE /api/v1/groups/:id/external_feeds/:feed_id`
+    pub async fn delete_external_feed(&self, feed_id: u64) -> Result<serde_json::Value> {
+        self.req()
+            .delete(&format!("groups/{}/external_feeds/{feed_id}", self.id), &[])
+            .await
+    }
+
+    /// Return the assignment override for this group.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/groups/:id/assignments/:assignment_id/override`
+    pub async fn get_assignment_override(&self, assignment_id: u64) -> Result<serde_json::Value> {
+        self.req()
+            .get(
+                &format!("groups/{}/assignments/{assignment_id}/override", self.id),
+                &[],
+            )
+            .await
+    }
+
+    /// Set usage rights for files in this group.
+    ///
+    /// # Canvas API
+    /// `PUT /api/v1/groups/:id/usage_rights`
+    pub async fn set_usage_rights(&self, params: &[(String, String)]) -> Result<serde_json::Value> {
+        self.req()
+            .put(&format!("groups/{}/usage_rights", self.id), params)
+            .await
+    }
+
+    /// Remove usage rights for files in this group.
+    ///
+    /// # Canvas API
+    /// `DELETE /api/v1/groups/:id/usage_rights`
+    pub async fn remove_usage_rights(
+        &self,
+        params: &[(String, String)],
+    ) -> Result<serde_json::Value> {
+        self.req()
+            .delete(&format!("groups/{}/usage_rights", self.id), params)
+            .await
+    }
+
+    /// Stream all available licenses for files in this group.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/groups/:id/content_licenses`
+    pub fn get_licenses(&self) -> PageStream<serde_json::Value> {
+        PageStream::new(
+            Arc::clone(self.req()),
+            &format!("groups/{}/content_licenses", self.id),
+            vec![],
+        )
+    }
+
     /// Upload a file to this group's file storage.
     ///
     /// Canvas uses a two-step upload: first POSTing metadata to obtain an upload URL,

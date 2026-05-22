@@ -797,3 +797,235 @@ async fn test_group_category_assign_members() {
     assert_eq!(progress.id, 5);
     assert_eq!(progress.workflow_state.as_deref(), Some("queued"));
 }
+
+#[tokio::test]
+async fn test_group_show_front_page() {
+    let server = MockServer::start().await;
+    let group = setup(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/groups/1/front_page"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 1,
+            "url": "front-page",
+            "title": "Front Page"
+        })))
+        .mount(&server)
+        .await;
+
+    let page = group.show_front_page().await.unwrap();
+    assert_eq!(page.url.as_deref(), Some("front-page"));
+    assert_eq!(page.title.as_deref(), Some("Front Page"));
+    assert_eq!(page.group_id, Some(1));
+}
+
+#[tokio::test]
+async fn test_group_edit_front_page() {
+    let server = MockServer::start().await;
+    let group = setup(&server).await;
+
+    Mock::given(method("PUT"))
+        .and(path("/api/v1/groups/1/front_page"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 1,
+            "url": "front-page-1",
+            "title": "Front Pagest"
+        })))
+        .mount(&server)
+        .await;
+
+    let page = group.edit_front_page(&[]).await.unwrap();
+    assert_eq!(page.url.as_deref(), Some("front-page-1"));
+    assert_eq!(page.title.as_deref(), Some("Front Pagest"));
+    assert_eq!(page.group_id, Some(1));
+}
+
+#[tokio::test]
+async fn test_group_get_file_quota() {
+    let server = MockServer::start().await;
+    let group = setup(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/groups/1/files/quota"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "quota": 777648912,
+            "quota_used": 567864213
+        })))
+        .mount(&server)
+        .await;
+
+    let quota = group.get_file_quota().await.unwrap();
+    assert_eq!(quota["quota"], 777648912);
+    assert_eq!(quota["quota_used"], 567864213);
+}
+
+#[tokio::test]
+async fn test_group_get_external_feeds() {
+    let server = MockServer::start().await;
+    let group = setup(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/groups/1/external_feeds"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"id": 1, "display_name": "My Blog", "url": "https://example.com/myblog.rss"},
+            {"id": 2, "display_name": "My Blog 2", "url": "https://example.com/myblog2.rss"}
+        ])))
+        .mount(&server)
+        .await;
+
+    let feeds = group.get_external_feeds().collect_all().await.unwrap();
+    assert_eq!(feeds.len(), 2);
+    assert_eq!(feeds[0]["display_name"], "My Blog");
+}
+
+#[tokio::test]
+async fn test_group_create_external_feed() {
+    let server = MockServer::start().await;
+    let group = setup(&server).await;
+
+    Mock::given(method("POST"))
+        .and(path("/api/v1/groups/1/external_feeds"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 1,
+            "display_name": "My Blog",
+            "url": "https://example.com/myblog.rss"
+        })))
+        .mount(&server)
+        .await;
+
+    let feed = group
+        .create_external_feed("https://example.com/myblog.rss")
+        .await
+        .unwrap();
+    assert_eq!(feed["id"], 1);
+    assert_eq!(feed["url"], "https://example.com/myblog.rss");
+}
+
+#[tokio::test]
+async fn test_group_delete_external_feed() {
+    let server = MockServer::start().await;
+    let group = setup(&server).await;
+
+    Mock::given(method("DELETE"))
+        .and(path("/api/v1/groups/1/external_feeds/1"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 1,
+            "display_name": "My Blog",
+            "url": "https://example.com/myblog.rss"
+        })))
+        .mount(&server)
+        .await;
+
+    let feed = group.delete_external_feed(1).await.unwrap();
+    assert_eq!(feed["display_name"], "My Blog");
+}
+
+#[tokio::test]
+async fn test_group_get_assignment_override() {
+    let server = MockServer::start().await;
+    let group = setup(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/groups/1/assignments/1/override"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 30,
+            "assignment_id": 1,
+            "group_id": 1,
+            "title": "Group Assignment Override"
+        })))
+        .mount(&server)
+        .await;
+
+    let override_val = group.get_assignment_override(1).await.unwrap();
+    assert_eq!(override_val["id"], 30);
+    assert_eq!(override_val["group_id"], 1);
+    assert_eq!(override_val["title"], "Group Assignment Override");
+}
+
+#[tokio::test]
+async fn test_group_set_usage_rights() {
+    let server = MockServer::start().await;
+    let group = setup(&server).await;
+
+    Mock::given(method("PUT"))
+        .and(path("/api/v1/groups/1/usage_rights"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "use_justification": "fair_use",
+            "license": "private",
+            "message": "2 files updated",
+            "file_ids": [1, 2]
+        })))
+        .mount(&server)
+        .await;
+
+    let result = group.set_usage_rights(&[]).await.unwrap();
+    assert_eq!(result["use_justification"], "fair_use");
+    assert_eq!(result["message"], "2 files updated");
+}
+
+#[tokio::test]
+async fn test_group_remove_usage_rights() {
+    let server = MockServer::start().await;
+    let group = setup(&server).await;
+
+    Mock::given(method("DELETE"))
+        .and(path("/api/v1/groups/1/usage_rights"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "message": "2 files updated",
+            "file_ids": [1, 2]
+        })))
+        .mount(&server)
+        .await;
+
+    let result = group.remove_usage_rights(&[]).await.unwrap();
+    assert_eq!(result["message"], "2 files updated");
+    assert_eq!(result["file_ids"][0], 1);
+}
+
+#[tokio::test]
+async fn test_group_get_licenses() {
+    let server = MockServer::start().await;
+    let group = setup(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/groups/1/content_licenses"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"id": "private", "name": "Private (Copyrighted)", "url": "http://en.wikipedia.org/wiki/Copyright"},
+            {"id": "public_domain", "name": "Public domain", "url": "http://en.wikipedia.org/wiki/Public_domain"}
+        ])))
+        .mount(&server)
+        .await;
+
+    let licenses = group.get_licenses().collect_all().await.unwrap();
+    assert_eq!(licenses.len(), 2);
+    assert_eq!(licenses[0]["id"], "private");
+    assert_eq!(licenses[1]["id"], "public_domain");
+}
+
+#[tokio::test]
+async fn test_group_resolve_path_with_value() {
+    let server = MockServer::start().await;
+    let group = setup(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path(
+            "/api/v1/groups/1/folders/by_path/Folder_Level_1/Folder_Level_2/Folder_Level_3",
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"id": 2, "name": "files", "full_name": "files"},
+            {"id": 3, "name": "Folder_Level_1", "full_name": "files/Folder_Level_1"},
+            {"id": 4, "name": "Folder_Level_2", "full_name": "files/Folder_Level_1/Folder_Level_2"},
+            {"id": 5, "name": "Folder_Level_3", "full_name": "files/Folder_Level_1/Folder_Level_2/Folder_Level_3"}
+        ])))
+        .mount(&server)
+        .await;
+
+    let folders = group
+        .resolve_path(Some("Folder_Level_1/Folder_Level_2/Folder_Level_3"))
+        .collect_all()
+        .await
+        .unwrap();
+    assert_eq!(folders.len(), 4);
+    assert_eq!(folders[0].name.as_deref(), Some("files"));
+    assert_eq!(folders[3].name.as_deref(), Some("Folder_Level_3"));
+}

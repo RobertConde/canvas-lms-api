@@ -350,3 +350,131 @@ async fn test_account_get_outcome_import_status() {
     let status = account.get_outcome_import_status(7).await.unwrap();
     assert_eq!(status["workflow_state"], "succeeded");
 }
+
+#[tokio::test]
+async fn test_account_create_course() {
+    let server = MockServer::start().await;
+    let account = setup(&server).await;
+
+    Mock::given(method("POST"))
+        .and(path("/api/v1/accounts/1/courses"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 99,
+            "name": "New Course",
+            "workflow_state": "available"
+        })))
+        .mount(&server)
+        .await;
+
+    let course = account
+        .create_course(&[("course[name]".to_string(), "New Course".to_string())])
+        .await
+        .unwrap();
+    assert_eq!(course.id, 99);
+    assert_eq!(course.name.as_deref(), Some("New Course"));
+}
+
+#[tokio::test]
+async fn test_account_create_sis_import() {
+    let server = MockServer::start().await;
+    let account = setup(&server).await;
+
+    Mock::given(method("POST"))
+        .and(path("/api/v1/accounts/1/sis_imports"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 42,
+            "account_id": 1,
+            "workflow_state": "created"
+        })))
+        .mount(&server)
+        .await;
+
+    let import = account
+        .create_sis_import(&[("import_type".to_string(), "instructure_csv".to_string())])
+        .await
+        .unwrap();
+    assert_eq!(import.id, 42);
+    assert_eq!(import.workflow_state.as_deref(), Some("created"));
+}
+
+#[tokio::test]
+async fn test_account_delete_admin() {
+    let server = MockServer::start().await;
+    let account = setup(&server).await;
+
+    Mock::given(method("DELETE"))
+        .and(path("/api/v1/accounts/1/admins/123"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 5,
+            "role": "AccountAdmin",
+            "role_id": 1,
+            "workflow_state": "deleted",
+            "user": {"id": 123, "login_id": "jdoe"}
+        })))
+        .mount(&server)
+        .await;
+
+    let deleted = account.delete_admin(123).await.unwrap();
+    assert_eq!(deleted["workflow_state"], "deleted");
+    assert_eq!(deleted["role"], "AccountAdmin");
+}
+
+#[tokio::test]
+async fn test_account_delete_grading_period() {
+    let server = MockServer::start().await;
+    let account = setup(&server).await;
+
+    Mock::given(method("DELETE"))
+        .and(path("/api/v1/accounts/1/grading_periods/7"))
+        .respond_with(ResponseTemplate::new(204))
+        .mount(&server)
+        .await;
+
+    account.delete_grading_period(7).await.unwrap();
+}
+
+#[tokio::test]
+async fn test_account_get_enrollment() {
+    let server = MockServer::start().await;
+    let account = setup(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/accounts/1/enrollments/10"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 10,
+            "course_id": 5,
+            "user_id": 42,
+            "type": "StudentEnrollment",
+            "enrollment_state": "active"
+        })))
+        .mount(&server)
+        .await;
+
+    let enrollment = account.get_enrollment(10).await.unwrap();
+    assert_eq!(enrollment.id, 10);
+    assert_eq!(enrollment.course_id, Some(5));
+}
+
+#[tokio::test]
+async fn test_account_get_authentication_events() {
+    let server = MockServer::start().await;
+    let account = setup(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/audit/authentication/accounts/1"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"event_type": "login", "pseudonym_id": 9478, "created_at": "2012-07-19T15:00:00-06:00"},
+            {"event_type": "logout", "pseudonym_id": 9478, "created_at": "2012-07-20T15:00:00-06:00"}
+        ])))
+        .mount(&server)
+        .await;
+
+    let events = account
+        .get_authentication_events()
+        .collect_all()
+        .await
+        .unwrap();
+    assert_eq!(events.len(), 2);
+    assert_eq!(events[0]["event_type"], "login");
+    assert_eq!(events[1]["event_type"], "logout");
+}

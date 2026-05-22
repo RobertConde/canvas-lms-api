@@ -22,7 +22,7 @@ use crate::{
         group::{Group, GroupCategory},
         lti_resource_link::{CreateLtiResourceLinkParams, LtiResourceLink},
         module::Module,
-        outcome::{OutcomeGroup, OutcomeLink, UpdateOutcomeGroupParams},
+        outcome::{OutcomeGroup, OutcomeImport, OutcomeLink, UpdateOutcomeGroupParams},
         page::Page,
         params::{
             assignment_params::CreateAssignmentParams, course_params::UpdateCourseParams,
@@ -661,6 +661,23 @@ impl Course {
             )
             .await?;
         assoc.requester = self.requester.clone();
+        Ok(assoc)
+    }
+
+    /// Create a rubric association for this course.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/courses/:course_id/rubric_associations`
+    pub async fn create_rubric_association(
+        &self,
+        params: &[(String, String)],
+    ) -> Result<RubricAssociation> {
+        let mut assoc: RubricAssociation = self
+            .req()
+            .post(&format!("courses/{}/rubric_associations", self.id), params)
+            .await?;
+        assoc.requester = self.requester.clone();
+        assoc.course_id = Some(self.id);
         Ok(assoc)
     }
 
@@ -1335,5 +1352,268 @@ impl Course {
             .await?;
         p.requester = Some(Arc::clone(self.req()));
         Ok(p)
+    }
+
+    // -------------------------------------------------------------------------
+    // Front page
+    // -------------------------------------------------------------------------
+
+    /// Fetch the front page of this course.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:id/front_page`
+    pub async fn show_front_page(&self) -> Result<Page> {
+        let mut p: Page = self
+            .req()
+            .get(&format!("courses/{}/front_page", self.id), &[])
+            .await?;
+        p.course_id = Some(self.id);
+        p.requester = self.requester.clone();
+        Ok(p)
+    }
+
+    /// Update the front page of this course.
+    ///
+    /// # Canvas API
+    /// `PUT /api/v1/courses/:id/front_page`
+    pub async fn edit_front_page(&self, params: &[(String, String)]) -> Result<Page> {
+        let mut p: Page = self
+            .req()
+            .put(&format!("courses/{}/front_page", self.id), params)
+            .await?;
+        p.course_id = Some(self.id);
+        p.requester = self.requester.clone();
+        Ok(p)
+    }
+
+    // -------------------------------------------------------------------------
+    // Content
+    // -------------------------------------------------------------------------
+
+    /// Export course content (shorthand for create_content_export).
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/courses/:id/content_exports`
+    pub async fn export_content(&self, export_type: &str) -> Result<ContentExport> {
+        let params = vec![("export_type".to_string(), export_type.to_string())];
+        self.req()
+            .post(&format!("courses/{}/content_exports", self.id), &params)
+            .await
+    }
+
+    /// Fetch the full view of a discussion topic (including entries).
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:id/discussion_topics/:topic_id/view`
+    pub async fn get_full_discussion_topic(&self, topic_id: u64) -> Result<serde_json::Value> {
+        self.req()
+            .get(
+                &format!("courses/{}/discussion_topics/{topic_id}/view", self.id),
+                &[],
+            )
+            .await
+    }
+
+    /// Convert HTML to the format Canvas uses for this course (sanitizes and processes).
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/courses/:id/preview_html`
+    pub async fn preview_html(&self, html: &str) -> Result<String> {
+        let params = vec![("html".to_string(), html.to_string())];
+        let val: serde_json::Value = self
+            .req()
+            .post(&format!("courses/{}/preview_html", self.id), &params)
+            .await?;
+        Ok(val
+            .get("html")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string())
+    }
+
+    /// Reorder pinned discussion topics for this course.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/courses/:id/discussion_topics/reorder`
+    pub async fn reorder_pinned_topics(&self, order: &[u64]) -> Result<serde_json::Value> {
+        let order_str = order
+            .iter()
+            .map(|id| id.to_string())
+            .collect::<Vec<_>>()
+            .join(",");
+        let params = vec![("order".to_string(), order_str)];
+        self.req()
+            .post(
+                &format!("courses/{}/discussion_topics/reorder", self.id),
+                &params,
+            )
+            .await
+    }
+
+    // -------------------------------------------------------------------------
+    // Users (single)
+    // -------------------------------------------------------------------------
+
+    /// Fetch a single user enrolled in this course.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:id/users/:user_id`
+    pub async fn get_user(&self, user_id: u64) -> Result<User> {
+        let mut u: User = self
+            .req()
+            .get(&format!("courses/{}/users/{user_id}", self.id), &[])
+            .await?;
+        u.requester = self.requester.clone();
+        Ok(u)
+    }
+
+    /// Stream recently active students in this course.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:id/recent_students`
+    pub fn get_recent_students(&self) -> PageStream<User> {
+        let req = Arc::clone(self.req());
+        PageStream::new_with_injector(
+            req,
+            &format!("courses/{}/recent_students", self.id),
+            vec![],
+            |mut u: User, r| {
+                u.requester = Some(Arc::clone(&r));
+                u
+            },
+        )
+    }
+
+    // -------------------------------------------------------------------------
+    // Usage rights / licenses
+    // -------------------------------------------------------------------------
+
+    /// Set usage rights on files within this course.
+    ///
+    /// # Canvas API
+    /// `PUT /api/v1/courses/:id/usage_rights`
+    pub async fn set_usage_rights(&self, params: &[(String, String)]) -> Result<serde_json::Value> {
+        self.req()
+            .put(&format!("courses/{}/usage_rights", self.id), params)
+            .await
+    }
+
+    /// Remove usage rights from files within this course.
+    ///
+    /// # Canvas API
+    /// `DELETE /api/v1/courses/:id/usage_rights`
+    pub async fn remove_usage_rights(
+        &self,
+        params: &[(String, String)],
+    ) -> Result<serde_json::Value> {
+        self.req()
+            .delete(&format!("courses/{}/usage_rights", self.id), params)
+            .await
+    }
+
+    /// Stream available content licenses for this course.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:id/content_licenses`
+    pub fn get_licenses(&self) -> PageStream<serde_json::Value> {
+        PageStream::new(
+            Arc::clone(self.req()),
+            &format!("courses/{}/content_licenses", self.id),
+            vec![],
+        )
+    }
+
+    // -------------------------------------------------------------------------
+    // External feeds
+    // -------------------------------------------------------------------------
+
+    /// Stream external feeds for this course.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:id/external_feeds`
+    pub fn get_external_feeds(&self) -> PageStream<serde_json::Value> {
+        PageStream::new(
+            Arc::clone(self.req()),
+            &format!("courses/{}/external_feeds", self.id),
+            vec![],
+        )
+    }
+
+    /// Create an external feed for this course.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/courses/:id/external_feeds`
+    pub async fn create_external_feed(&self, url: &str) -> Result<serde_json::Value> {
+        let params = vec![("url".to_string(), url.to_string())];
+        self.req()
+            .post(&format!("courses/{}/external_feeds", self.id), &params)
+            .await
+    }
+
+    /// Delete an external feed from this course.
+    ///
+    /// # Canvas API
+    /// `DELETE /api/v1/courses/:id/external_feeds/:feed_id`
+    pub async fn delete_external_feed(&self, feed_id: u64) -> Result<serde_json::Value> {
+        self.req()
+            .delete(
+                &format!("courses/{}/external_feeds/{feed_id}", self.id),
+                &[],
+            )
+            .await
+    }
+
+    // -------------------------------------------------------------------------
+    // Sections
+    // -------------------------------------------------------------------------
+
+    /// Create a section in this course.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/courses/:id/sections`
+    pub async fn create_course_section(&self, params: &[(String, String)]) -> Result<Section> {
+        let mut s: Section = self
+            .req()
+            .post(&format!("courses/{}/sections", self.id), params)
+            .await?;
+        s.course_id = Some(self.id);
+        s.requester = self.requester.clone();
+        Ok(s)
+    }
+
+    // -------------------------------------------------------------------------
+    // Outcome imports
+    // -------------------------------------------------------------------------
+
+    /// Import outcomes into this course.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/courses/:id/outcome_imports`
+    pub async fn import_outcomes(&self, params: &[(String, String)]) -> Result<OutcomeImport> {
+        let context = format!("courses/{}", self.id);
+        let mut import: OutcomeImport = self
+            .req()
+            .post(&format!("{}/outcome_imports", context), params)
+            .await?;
+        import.requester = self.requester.clone();
+        import.course_id = Some(self.id);
+        import.context_path = Some(context);
+        Ok(import)
+    }
+
+    /// Get the status of an outcome import for this course.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:id/outcome_imports/:id`
+    pub async fn get_outcome_import_status(&self, import_id: u64) -> Result<OutcomeImport> {
+        let context = format!("courses/{}", self.id);
+        let mut import: OutcomeImport = self
+            .req()
+            .get(&format!("{}/outcome_imports/{import_id}", context), &[])
+            .await?;
+        import.requester = self.requester.clone();
+        import.course_id = Some(self.id);
+        import.context_path = Some(context);
+        Ok(import)
     }
 }

@@ -10,7 +10,7 @@ A Rust client for the [Instructure Canvas LMS REST API](https://canvas.instructu
 
 ```toml
 [dependencies]
-canvas-lms-api = "0.6"
+canvas-lms-api = "0.7"
 tokio = { version = "1", features = ["full"] }
 ```
 
@@ -45,7 +45,7 @@ async fn main() -> canvas_lms_api::Result<()> {
 | `graphql` | no | GraphQL endpoint support |
 | `full` | no | All optional features |
 
-## Resources covered (v0.6)
+## Resources covered (v0.7)
 
 **Core:** Course, User, Assignment (+ Group + Override), Submission, Enrollment,
 Section, Module (+ ModuleItem), Quiz (+ Question + Submission + Group + Report),
@@ -56,8 +56,9 @@ DiscussionTopic (+ Entry), Progress, Tab, CustomGradebookColumn
 Collaboration, CommunicationChannel, ContentExport, ContentMigration, Conversation,
 EnrollmentTerm, EPortfolio, ExternalTool, Feature / FeatureFlag,
 GradeChangeLog, GradebookHistory, GradingPeriod, GradingStandard,
-JWT, LtiResourceLink, Outcome / OutcomeGroup, Planner (Note + Override),
-Poll / PollChoice / PollSession / PollSubmission, Role, Rubric, SisImport
+JWT, Login, LtiResourceLink, Outcome / OutcomeGroup / OutcomeImport,
+Planner (Note + Override), Poll / PollChoice / PollSession / PollSubmission,
+Role, Rubric (+ Association + Assessment), SisImport
 
 **Feature-gated:** NewQuiz (`new-quizzes`), GraphQL queries (`graphql`)
 

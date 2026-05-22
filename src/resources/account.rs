@@ -7,12 +7,14 @@ use crate::{
         account_calendar::AccountCalendar,
         content_export::{ContentExport, ContentExportParams},
         content_migration::{ContentMigration, Migrator},
+        enrollment::Enrollment,
         enrollment_term::{EnrollmentTerm, EnrollmentTermParams},
         external_tool::{ExternalTool, ExternalToolParams},
         feature::{Feature, FeatureFlag},
         grading_standard::{GradingStandard, GradingStandardParams},
         group::{Group, GroupCategory, GroupCategoryParams},
-        outcome::{OutcomeGroup, UpdateOutcomeGroupParams},
+        login::Login,
+        outcome::{OutcomeGroup, OutcomeImport, UpdateOutcomeGroupParams},
         role::{Role, RoleParams},
         rubric::{Rubric, RubricParams},
         sis_import::SisImport,
@@ -867,5 +869,137 @@ impl Account {
                 &[],
             )
             .await
+    }
+
+    // -------------------------------------------------------------------------
+    // Missing methods added in v0.7.0
+    // -------------------------------------------------------------------------
+
+    /// Create a course in this account.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/accounts/:id/courses`
+    pub async fn create_course(
+        &self,
+        params: &[(String, String)],
+    ) -> Result<crate::resources::course::Course> {
+        let mut c: crate::resources::course::Course = self
+            .req()
+            .post(&format!("accounts/{}/courses", self.id), params)
+            .await?;
+        c.requester = self.requester.clone();
+        Ok(c)
+    }
+
+    /// Create a SIS import for this account.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/accounts/:id/sis_imports`
+    pub async fn create_sis_import(&self, params: &[(String, String)]) -> Result<SisImport> {
+        let mut import: SisImport = self
+            .req()
+            .post(&format!("accounts/{}/sis_imports", self.id), params)
+            .await?;
+        import.requester = self.requester.clone();
+        Ok(import)
+    }
+
+    /// Remove an admin from this account.
+    ///
+    /// # Canvas API
+    /// `DELETE /api/v1/accounts/:id/admins/:user_id`
+    pub async fn delete_admin(&self, user_id: u64) -> Result<serde_json::Value> {
+        self.req()
+            .delete(&format!("accounts/{}/admins/{user_id}", self.id), &[])
+            .await
+    }
+
+    /// Delete a grading period from this account.
+    ///
+    /// # Canvas API
+    /// `DELETE /api/v1/accounts/:id/grading_periods/:grading_period_id`
+    pub async fn delete_grading_period(&self, grading_period_id: u64) -> Result<()> {
+        self.req()
+            .delete_void(&format!(
+                "accounts/{}/grading_periods/{grading_period_id}",
+                self.id
+            ))
+            .await
+    }
+
+    /// Fetch a single enrollment by ID within this account.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/accounts/:id/enrollments/:enrollment_id`
+    pub async fn get_enrollment(&self, enrollment_id: u64) -> Result<Enrollment> {
+        let mut e: Enrollment = self
+            .req()
+            .get(
+                &format!("accounts/{}/enrollments/{enrollment_id}", self.id),
+                &[],
+            )
+            .await?;
+        e.requester = self.requester.clone();
+        Ok(e)
+    }
+
+    /// Stream authentication events for this account.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/audit/authentication/accounts/:id`
+    pub fn get_authentication_events(&self) -> PageStream<serde_json::Value> {
+        PageStream::new(
+            Arc::clone(self.req()),
+            &format!("audit/authentication/accounts/{}", self.id),
+            vec![],
+        )
+    }
+
+    /// Import outcomes into this account.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/accounts/:id/outcome_imports`
+    pub async fn import_outcomes(&self, params: &[(String, String)]) -> Result<OutcomeImport> {
+        let context = format!("accounts/{}", self.id);
+        let mut import: OutcomeImport = self
+            .req()
+            .post(&format!("{}/outcome_imports", context), params)
+            .await?;
+        import.requester = self.requester.clone();
+        import.account_id = Some(self.id);
+        import.context_path = Some(context);
+        Ok(import)
+    }
+
+    /// Stream logins for this account.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/accounts/:id/logins`
+    pub fn get_user_logins(&self) -> PageStream<Login> {
+        let account_id = self.id;
+        PageStream::new_with_injector(
+            Arc::clone(self.req()),
+            &format!("accounts/{account_id}/logins"),
+            vec![],
+            move |mut l: Login, req| {
+                l.requester = Some(Arc::clone(&req));
+                l.account_id = Some(account_id);
+                l
+            },
+        )
+    }
+
+    /// Create a login for a user in this account.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/accounts/:id/logins`
+    pub async fn create_user_login(&self, params: &[(String, String)]) -> Result<Login> {
+        let mut login: Login = self
+            .req()
+            .post(&format!("accounts/{}/logins", self.id), params)
+            .await?;
+        login.requester = self.requester.clone();
+        login.account_id = Some(self.id);
+        Ok(login)
     }
 }

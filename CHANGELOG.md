@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-05-23
+
+### Added
+- **Login** — new `Login` resource with `edit`, `delete`, `get_authentication_events`;
+  `Account::get_user_logins`, `create_user_login`
+- **OutcomeImport** — new `OutcomeImport` struct with `get_progress`;
+  `Account::import_outcomes`; `Course::import_outcomes`, `get_outcome_import_status`
+- **Rubric instance methods** — `Rubric::delete`, `update`; `RubricAssociation::update`,
+  `delete`, `create_rubric_assessment`; `RubricAssessment::update`, `delete`
+- **Account** — `create_course`, `create_sis_import`, `delete_admin`,
+  `delete_grading_period`, `get_enrollment`, `get_authentication_events`
+- **Course** — `show_front_page`, `edit_front_page`, `export_content`,
+  `get_full_discussion_topic`, `preview_html`, `reorder_pinned_topics`,
+  `get_user`, `get_recent_students`, `upload_file`, `set_usage_rights`,
+  `remove_usage_rights`, `get_licenses`, `get_external_feeds`,
+  `create_external_feed`, `delete_external_feed`, `create_course_section`
+- **Group** — `get_content_migration`, `create_content_migration`,
+  `get_migration_systems`, `get_content_export`, `export_content`,
+  `get_full_discussion_topic`, `get_activity_stream_summary`, `reorder_pinned_topics`
+- **User** — `add_observee_with_credentials`, `get_calendar_events`,
+  `get_content_export`, `get_licenses`, `set_usage_rights`, `remove_usage_rights`
+- **ExternalTool** — `get_sessionless_launch_url`
+- **New test files** — `login_test.rs`, `rubric_test.rs` (566 tests total, up from 504)
+
 ## [0.6.0] - 2026-05-23
 
 ### Added
@@ -254,6 +278,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI: fmt, clippy, tests, doc build, MSRV 1.75 check
 - MIT license
 
+[0.7.0]: https://github.com/RobertConde/canvas-lms-api/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/RobertConde/canvas-lms-api/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/RobertConde/canvas-lms-api/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/RobertConde/canvas-lms-api/compare/v0.4.0...v0.5.0

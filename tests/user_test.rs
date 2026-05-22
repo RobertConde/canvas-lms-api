@@ -830,3 +830,147 @@ async fn test_user_get_feature_flag() {
     assert_eq!(flag["feature"], "high_contrast");
     assert_eq!(flag["state"], "allowed");
 }
+
+// ---- Batch 4: remaining depth ----
+
+#[tokio::test]
+async fn test_user_add_observee_with_credentials() {
+    let server = MockServer::start().await;
+    let user = setup(&server).await;
+
+    Mock::given(method("POST"))
+        .and(path("/api/v1/users/42/observees"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 5,
+            "name": "User 5"
+        })))
+        .mount(&server)
+        .await;
+
+    let observee = user
+        .add_observee_with_credentials(&[
+            (
+                "observee[unique_id]".to_string(),
+                "user5@example.com".to_string(),
+            ),
+            ("observee[password]".to_string(), "password".to_string()),
+        ])
+        .await
+        .unwrap();
+    assert_eq!(observee.id, 5);
+    assert_eq!(observee.name.as_deref(), Some("User 5"));
+}
+
+#[tokio::test]
+async fn test_user_get_calendar_events() {
+    let server = MockServer::start().await;
+    let user = setup(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/users/42/calendar_events"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"id": 123, "title": "Test Event", "context_code": "course_321"},
+            {"id": 124, "title": "Another Event", "context_code": "course_321"}
+        ])))
+        .mount(&server)
+        .await;
+
+    let events = user.get_calendar_events().collect_all().await.unwrap();
+    assert_eq!(events.len(), 2);
+    assert_eq!(events[0]["id"], 123);
+    assert_eq!(events[0]["title"], "Test Event");
+}
+
+#[tokio::test]
+async fn test_user_get_content_export() {
+    let server = MockServer::start().await;
+    let user = setup(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/users/42/content_exports/11"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 11,
+            "user_id": 1,
+            "export_type": "common_cartridge",
+            "workflow_state": "exported"
+        })))
+        .mount(&server)
+        .await;
+
+    let e = user.get_content_export(11).await.unwrap();
+    assert_eq!(e["id"], 11);
+    assert_eq!(e["export_type"], "common_cartridge");
+}
+
+#[tokio::test]
+async fn test_user_get_licenses() {
+    let server = MockServer::start().await;
+    let user = setup(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/users/42/content_licenses"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"id": "private", "name": "Private (Copyrighted)", "url": "https://copyright.gov"},
+            {"id": "public_domain", "name": "Public Domain", "url": "https://creativecommons.org"}
+        ])))
+        .mount(&server)
+        .await;
+
+    let licenses = user.get_licenses().collect_all().await.unwrap();
+    assert_eq!(licenses.len(), 2);
+    assert_eq!(licenses[0]["id"], "private");
+}
+
+#[tokio::test]
+async fn test_user_set_usage_rights() {
+    let server = MockServer::start().await;
+    let user = setup(&server).await;
+
+    Mock::given(method("PUT"))
+        .and(path("/api/v1/users/42/usage_rights"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "use_justification": "fair_use",
+            "license": "private",
+            "message": "2 files updated",
+            "file_ids": [1, 2]
+        })))
+        .mount(&server)
+        .await;
+
+    let result = user
+        .set_usage_rights(&[
+            ("file_ids[]".to_string(), "1".to_string()),
+            (
+                "usage_rights[use_justification]".to_string(),
+                "fair_use".to_string(),
+            ),
+        ])
+        .await
+        .unwrap();
+    assert_eq!(result["use_justification"], "fair_use");
+    assert_eq!(result["message"], "2 files updated");
+}
+
+#[tokio::test]
+async fn test_user_remove_usage_rights() {
+    let server = MockServer::start().await;
+    let user = setup(&server).await;
+
+    Mock::given(method("DELETE"))
+        .and(path("/api/v1/users/42/usage_rights"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "message": "2 files updated",
+            "file_ids": [1, 2]
+        })))
+        .mount(&server)
+        .await;
+
+    let result = user
+        .remove_usage_rights(&[
+            ("file_ids[]".to_string(), "1".to_string()),
+            ("file_ids[]".to_string(), "2".to_string()),
+        ])
+        .await
+        .unwrap();
+    assert_eq!(result["message"], "2 files updated");
+}

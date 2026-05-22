@@ -415,6 +415,45 @@ impl Group {
         )
     }
 
+    /// Fetch a single content migration by ID.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/groups/:id/content_migrations/:id`
+    pub async fn get_content_migration(&self, migration_id: u64) -> Result<serde_json::Value> {
+        self.req()
+            .get(
+                &format!("groups/{}/content_migrations/{migration_id}", self.id),
+                &[],
+            )
+            .await
+    }
+
+    /// Create a content migration for this group.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/groups/:id/content_migrations`
+    pub async fn create_content_migration(
+        &self,
+        migration_type: &str,
+    ) -> Result<serde_json::Value> {
+        let params = vec![("migration_type".to_string(), migration_type.to_string())];
+        self.req()
+            .post(&format!("groups/{}/content_migrations", self.id), &params)
+            .await
+    }
+
+    /// Stream available migration systems for this group.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/groups/:id/content_migrations/migrators`
+    pub fn get_migration_systems(&self) -> PageStream<serde_json::Value> {
+        PageStream::new(
+            Arc::clone(self.req()),
+            &format!("groups/{}/content_migrations/migrators", self.id),
+            vec![],
+        )
+    }
+
     /// Stream all content exports for this group.
     ///
     /// # Canvas API
@@ -425,6 +464,72 @@ impl Group {
             &format!("groups/{}/content_exports", self.id),
             vec![],
         )
+    }
+
+    /// Fetch a single content export by ID.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/groups/:id/content_exports/:id`
+    pub async fn get_content_export(&self, export_id: u64) -> Result<serde_json::Value> {
+        self.req()
+            .get(
+                &format!("groups/{}/content_exports/{export_id}", self.id),
+                &[],
+            )
+            .await
+    }
+
+    /// Export group content.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/groups/:id/content_exports`
+    pub async fn export_content(&self, export_type: &str) -> Result<serde_json::Value> {
+        let params = vec![("export_type".to_string(), export_type.to_string())];
+        self.req()
+            .post(&format!("groups/{}/content_exports", self.id), &params)
+            .await
+    }
+
+    /// Fetch the full view of a discussion topic (including entries).
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/groups/:id/discussion_topics/:topic_id/view`
+    pub async fn get_full_discussion_topic(&self, topic_id: u64) -> Result<serde_json::Value> {
+        self.req()
+            .get(
+                &format!("groups/{}/discussion_topics/{topic_id}/view", self.id),
+                &[],
+            )
+            .await
+    }
+
+    /// Fetch a summary of this group's activity stream.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/groups/:id/activity_stream/summary`
+    pub async fn get_activity_stream_summary(&self) -> Result<serde_json::Value> {
+        self.req()
+            .get(&format!("groups/{}/activity_stream/summary", self.id), &[])
+            .await
+    }
+
+    /// Reorder pinned discussion topics for this group.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/groups/:id/discussion_topics/reorder`
+    pub async fn reorder_pinned_topics(&self, order: &[u64]) -> Result<serde_json::Value> {
+        let order_str = order
+            .iter()
+            .map(|id| id.to_string())
+            .collect::<Vec<_>>()
+            .join(",");
+        let params = vec![("order".to_string(), order_str)];
+        self.req()
+            .post(
+                &format!("groups/{}/discussion_topics/reorder", self.id),
+                &params,
+            )
+            .await
     }
 
     /// Preview processed HTML content in this group's context.

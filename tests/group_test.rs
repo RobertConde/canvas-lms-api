@@ -1029,3 +1029,160 @@ async fn test_group_resolve_path_with_value() {
     assert_eq!(folders[0].name.as_deref(), Some("files"));
     assert_eq!(folders[3].name.as_deref(), Some("Folder_Level_3"));
 }
+
+// ---- Batch 4: remaining depth ----
+
+#[tokio::test]
+async fn test_group_get_content_migration() {
+    let server = MockServer::start().await;
+    let group = setup(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/groups/1/content_migrations/1"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 1,
+            "migration_type": "dummy_importer",
+            "workflow_state": "completed"
+        })))
+        .mount(&server)
+        .await;
+
+    let m = group.get_content_migration(1).await.unwrap();
+    assert_eq!(m["id"], 1);
+    assert_eq!(m["workflow_state"], "completed");
+}
+
+#[tokio::test]
+async fn test_group_create_content_migration() {
+    let server = MockServer::start().await;
+    let group = setup(&server).await;
+
+    Mock::given(method("POST"))
+        .and(path("/api/v1/groups/1/content_migrations"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 1,
+            "migration_type": "dummy_importer",
+            "workflow_state": "created"
+        })))
+        .mount(&server)
+        .await;
+
+    let m = group
+        .create_content_migration("dummy_importer")
+        .await
+        .unwrap();
+    assert_eq!(m["migration_type"], "dummy_importer");
+    assert_eq!(m["workflow_state"], "created");
+}
+
+#[tokio::test]
+async fn test_group_get_migration_systems() {
+    let server = MockServer::start().await;
+    let group = setup(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/groups/1/content_migrations/migrators"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"type": "dummy_importer", "requires_file_upload": false, "name": "Dummy"}
+        ])))
+        .mount(&server)
+        .await;
+
+    let systems = group.get_migration_systems().collect_all().await.unwrap();
+    assert_eq!(systems.len(), 1);
+    assert_eq!(systems[0]["type"], "dummy_importer");
+}
+
+#[tokio::test]
+async fn test_group_get_content_export() {
+    let server = MockServer::start().await;
+    let group = setup(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/groups/1/content_exports/11"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 11,
+            "export_type": "common_cartridge",
+            "workflow_state": "exported"
+        })))
+        .mount(&server)
+        .await;
+
+    let e = group.get_content_export(11).await.unwrap();
+    assert_eq!(e["id"], 11);
+    assert_eq!(e["export_type"], "common_cartridge");
+}
+
+#[tokio::test]
+async fn test_group_export_content() {
+    let server = MockServer::start().await;
+    let group = setup(&server).await;
+
+    Mock::given(method("POST"))
+        .and(path("/api/v1/groups/1/content_exports"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 99,
+            "export_type": "common_cartridge",
+            "workflow_state": "created"
+        })))
+        .mount(&server)
+        .await;
+
+    let e = group.export_content("common_cartridge").await.unwrap();
+    assert_eq!(e["export_type"], "common_cartridge");
+}
+
+#[tokio::test]
+async fn test_group_get_full_discussion_topic() {
+    let server = MockServer::start().await;
+    let group = setup(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/groups/1/discussion_topics/5/view"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 5,
+            "view": [{"id": 1}],
+            "participants": [{"id": 10}]
+        })))
+        .mount(&server)
+        .await;
+
+    let t = group.get_full_discussion_topic(5).await.unwrap();
+    assert_eq!(t["id"], 5);
+    assert!(t.get("view").is_some());
+}
+
+#[tokio::test]
+async fn test_group_get_activity_stream_summary() {
+    let server = MockServer::start().await;
+    let group = setup(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/groups/1/activity_stream/summary"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"type": "DiscussionTopic", "unread_count": 2, "count": 7}
+        ])))
+        .mount(&server)
+        .await;
+
+    let summary = group.get_activity_stream_summary().await.unwrap();
+    assert!(summary.is_array());
+}
+
+#[tokio::test]
+async fn test_group_reorder_pinned_topics() {
+    let server = MockServer::start().await;
+    let group = setup(&server).await;
+
+    Mock::given(method("POST"))
+        .and(path("/api/v1/groups/1/discussion_topics/reorder"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "reorder": true,
+            "order": [1, 2, 3]
+        })))
+        .mount(&server)
+        .await;
+
+    let result = group.reorder_pinned_topics(&[1, 2, 3]).await.unwrap();
+    assert_eq!(result["reorder"], true);
+}

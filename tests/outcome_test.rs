@@ -233,3 +233,69 @@ async fn test_outcome_group_import_outcome_group() {
     assert_eq!(imported.id, 99);
     assert_eq!(imported.title.as_deref(), Some("Imported Group"));
 }
+
+// ---- OutcomeImport (Batch 6) ----
+
+#[tokio::test]
+async fn test_account_import_outcomes() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/accounts/1"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({"id": 1})))
+        .mount(&server)
+        .await;
+    Mock::given(method("POST"))
+        .and(path("/api/v1/accounts/1/outcome_imports"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 7,
+            "account_id": 1,
+            "workflow_state": "created",
+            "progress": 0.0
+        })))
+        .mount(&server)
+        .await;
+
+    let canvas = canvas_lms_api::Canvas::new(&server.uri(), "token").unwrap();
+    let account = canvas.get_account(1).await.unwrap();
+    let import = account.import_outcomes(&[]).await.unwrap();
+    assert_eq!(import.id, 7);
+    assert_eq!(import.workflow_state.as_deref(), Some("created"));
+    assert_eq!(import.account_id, Some(1));
+}
+
+#[tokio::test]
+async fn test_outcome_import_get_progress() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/accounts/1"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({"id": 1})))
+        .mount(&server)
+        .await;
+    Mock::given(method("POST"))
+        .and(path("/api/v1/accounts/1/outcome_imports"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 7,
+            "account_id": 1,
+            "workflow_state": "created"
+        })))
+        .mount(&server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/api/v1/accounts/1/outcome_imports/7"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 7,
+            "account_id": 1,
+            "workflow_state": "succeeded"
+        })))
+        .mount(&server)
+        .await;
+
+    let canvas = canvas_lms_api::Canvas::new(&server.uri(), "token").unwrap();
+    let account = canvas.get_account(1).await.unwrap();
+    let import = account.import_outcomes(&[]).await.unwrap();
+    let progress = import.get_progress().await.unwrap();
+    assert_eq!(progress["id"], 7);
+    assert_eq!(progress["workflow_state"], "succeeded");
+}

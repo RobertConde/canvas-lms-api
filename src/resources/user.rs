@@ -674,6 +674,79 @@ impl User {
         )
         .await
     }
+
+    /// Add an observee via credentials (same endpoint as add_observee but without observee_id).
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/users/:id/observees`
+    pub async fn add_observee_with_credentials(&self, params: &[(String, String)]) -> Result<User> {
+        let mut u: User = self
+            .req()
+            .post(&format!("users/{}/observees", self.id), params)
+            .await?;
+        u.requester = self.requester.clone();
+        Ok(u)
+    }
+
+    /// Stream calendar events for this user.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/users/:id/calendar_events`
+    pub fn get_calendar_events(&self) -> PageStream<serde_json::Value> {
+        PageStream::new(
+            Arc::clone(self.req()),
+            &format!("users/{}/calendar_events", self.id),
+            vec![],
+        )
+    }
+
+    /// Fetch a single content export by ID.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/users/:id/content_exports/:id`
+    pub async fn get_content_export(&self, export_id: u64) -> Result<serde_json::Value> {
+        self.req()
+            .get(
+                &format!("users/{}/content_exports/{export_id}", self.id),
+                &[],
+            )
+            .await
+    }
+
+    /// Stream available content licenses for this user.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/users/:id/content_licenses`
+    pub fn get_licenses(&self) -> PageStream<serde_json::Value> {
+        PageStream::new(
+            Arc::clone(self.req()),
+            &format!("users/{}/content_licenses", self.id),
+            vec![],
+        )
+    }
+
+    /// Set usage rights on files for this user.
+    ///
+    /// # Canvas API
+    /// `PUT /api/v1/users/:id/usage_rights`
+    pub async fn set_usage_rights(&self, params: &[(String, String)]) -> Result<serde_json::Value> {
+        self.req()
+            .put(&format!("users/{}/usage_rights", self.id), params)
+            .await
+    }
+
+    /// Remove usage rights from files for this user.
+    ///
+    /// # Canvas API
+    /// `DELETE /api/v1/users/:id/usage_rights`
+    pub async fn remove_usage_rights(
+        &self,
+        params: &[(String, String)],
+    ) -> Result<serde_json::Value> {
+        self.req()
+            .delete(&format!("users/{}/usage_rights", self.id), params)
+            .await
+    }
 }
 
 /// The currently authenticated user (extends User with additional fields).

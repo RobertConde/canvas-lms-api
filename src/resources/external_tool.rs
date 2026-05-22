@@ -107,4 +107,22 @@ impl ExternalTool {
         tool.requester = self.requester.clone();
         Ok(tool)
     }
+
+    /// Get the sessionless launch URL for this external tool.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/external_tools/sessionless_launch`
+    /// `GET /api/v1/accounts/:account_id/external_tools/sessionless_launch`
+    pub async fn get_sessionless_launch_url(&self, params: &[(String, String)]) -> Result<Value> {
+        self.req()
+            .get(
+                &format!(
+                    "{}s/{}/external_tools/sessionless_launch",
+                    self.parent_type(),
+                    self.parent_id()
+                ),
+                params,
+            )
+            .await
+    }
 }

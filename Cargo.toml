@@ -4,7 +4,7 @@ resolver = "2"
 
 [package]
 name = "canvas-lms-api"
-version = "0.6.0"
+version = "0.7.0"
 edition = "2021"
 rust-version = "1.86"
 description = "Rust client for the Instructure Canvas LMS REST API"

@@ -449,9 +449,20 @@ Tests: extend `tests/account_test.rs`
 
 ---
 
-### v0.7.0 — Plan
+### v0.7.0 (shipped) ✓
 
-**Start count: 504 tests. Target: ~650 tests.**
+**566 tests, 0 failures.** All three CI matrix configs clean.
+
+| Batch | What was delivered |
+|---|---|
+| 1 | Account missing methods: `create_course`, `create_sis_import`, `delete_admin`, `delete_grading_period`, `get_enrollment`, `get_authentication_events`; + 6 new account tests |
+| 2 | Course missing methods: `show_front_page`, `edit_front_page`, `export_content`, `get_full_discussion_topic`, `preview_html`, `reorder_pinned_topics`, `get_user`, `get_recent_students`, `upload_file`, `set_usage_rights`, `remove_usage_rights`, `get_licenses`, `get_external_feeds`, `create/delete_external_feed`, `create_course_section`; + 15 tests |
+| 3 | Rubric instance methods: `Rubric::delete/update`; `RubricAssociation::update/delete/create_rubric_assessment`; `RubricAssessment::update/delete`; new `tests/rubric_test.rs` (7 tests) |
+| 4 | Group: `get/create_content_migration`, `get_migration_systems`, `get/export_content`, `get_full_discussion_topic`, `get_activity_stream_summary`, `reorder_pinned_topics` (8 tests); User: `add_observee_with_credentials`, `get_calendar_events`, `get_content_export`, `get_licenses`, `set/remove_usage_rights` (6 tests) |
+| 5 | Login resource: new `src/resources/login.rs` with `edit`, `delete`, `get_authentication_events`; `Account::get_user_logins`, `create_user_login`; `tests/login_test.rs` (5 tests) |
+| 6 | `ExternalTool::get_sessionless_launch_url` (2 tests); `OutcomeImport` struct + `get_progress`; `Account::import_outcomes`; `Course::import_outcomes`, `get_outcome_import_status` (4 tests) |
+
+### v0.8.0 — Plan
 
 Goals: fill Account test gaps + missing methods; add missing Course methods; implement Rubric resource; fill Group/User remaining depth; add Login resource; tighten ExternalTool and OutcomeImport.
 

@@ -25,6 +25,7 @@ pub mod grading_period;
 pub mod grading_standard;
 pub mod group;
 pub mod jwt;
+pub mod login;
 pub mod lti_resource_link;
 pub mod module;
 #[cfg(feature = "new-quizzes")]

@@ -254,3 +254,35 @@ pub struct OutcomeLink {
     pub assessed: Option<bool>,
     pub can_unlink: Option<bool>,
 }
+
+/// An outcome import job.
+#[derive(Debug, Clone, Deserialize, Serialize, canvas_lms_api_derive::CanvasResource)]
+pub struct OutcomeImport {
+    pub id: u64,
+    pub account_id: Option<u64>,
+    pub course_id: Option<u64>,
+    pub workflow_state: Option<String>,
+    pub data: Option<Value>,
+    pub progress: Option<f64>,
+
+    #[serde(skip)]
+    pub(crate) requester: Option<Arc<Requester>>,
+    #[serde(skip)]
+    pub(crate) context_path: Option<String>,
+}
+
+impl OutcomeImport {
+    /// Fetch the current progress/status of this outcome import.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/:context/outcome_imports/:id`
+    pub async fn get_progress(&self) -> Result<Value> {
+        let ctx = self
+            .context_path
+            .as_deref()
+            .expect("OutcomeImport missing context_path");
+        self.req()
+            .get(&format!("{}/outcome_imports/{}", ctx, self.id), &[])
+            .await
+    }
+}

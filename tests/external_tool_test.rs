@@ -138,3 +138,48 @@ async fn test_external_tool_delete_account() {
     let deleted = tool.delete().await.unwrap();
     assert_eq!(deleted.id, 5);
 }
+
+#[tokio::test]
+async fn test_external_tool_get_sessionless_launch_url_course() {
+    let server = MockServer::start().await;
+    let tool = setup_course_tool(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/external_tools/sessionless_launch"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": "5",
+            "name": "Tool",
+            "url": "https://lti.example.com/launch"
+        })))
+        .mount(&server)
+        .await;
+
+    let result = tool
+        .get_sessionless_launch_url(&[("id".to_string(), "5".to_string())])
+        .await
+        .unwrap();
+    assert_eq!(result["name"], "Tool");
+    assert!(result.get("url").is_some());
+}
+
+#[tokio::test]
+async fn test_external_tool_get_sessionless_launch_url_account() {
+    let server = MockServer::start().await;
+    let tool = setup_account_tool(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/accounts/1/external_tools/sessionless_launch"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": "5",
+            "name": "Account Tool",
+            "url": "https://lti.example.com/account-launch"
+        })))
+        .mount(&server)
+        .await;
+
+    let result = tool
+        .get_sessionless_launch_url(&[("id".to_string(), "5".to_string())])
+        .await
+        .unwrap();
+    assert_eq!(result["name"], "Account Tool");
+}

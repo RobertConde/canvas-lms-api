@@ -896,3 +896,85 @@ async fn test_get_rubric_associations() {
     assert_eq!(assocs[0].id, 7);
     assert_eq!(assocs[1].association_type.as_deref(), Some("Assignment"));
 }
+
+#[tokio::test]
+async fn test_create_rubric_association() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("POST"))
+        .and(path("/api/v1/courses/1/rubric_associations"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 9,
+            "rubric_id": 3,
+            "association_id": 10,
+            "association_type": "Assignment",
+            "course_id": 1,
+            "purpose": "grading"
+        })))
+        .mount(&server)
+        .await;
+
+    let assoc = course
+        .create_rubric_association(&[
+            ("rubric_association[rubric_id]".to_string(), "3".to_string()),
+            (
+                "rubric_association[association_id]".to_string(),
+                "10".to_string(),
+            ),
+            (
+                "rubric_association[association_type]".to_string(),
+                "Assignment".to_string(),
+            ),
+            (
+                "rubric_association[purpose]".to_string(),
+                "grading".to_string(),
+            ),
+        ])
+        .await
+        .unwrap();
+    assert_eq!(assoc.id, 9);
+    assert_eq!(assoc.rubric_id, Some(3));
+    assert_eq!(assoc.purpose.as_deref(), Some("grading"));
+    assert_eq!(assoc.course_id, Some(1));
+}
+
+#[tokio::test]
+async fn test_course_import_outcomes() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("POST"))
+        .and(path("/api/v1/courses/1/outcome_imports"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 42,
+            "course_id": 1,
+            "workflow_state": "created"
+        })))
+        .mount(&server)
+        .await;
+
+    let import = course.import_outcomes(&[]).await.unwrap();
+    assert_eq!(import.id, 42);
+    assert_eq!(import.workflow_state.as_deref(), Some("created"));
+}
+
+#[tokio::test]
+async fn test_course_get_outcome_import_status() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/outcome_imports/42"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 42,
+            "course_id": 1,
+            "workflow_state": "succeeded"
+        })))
+        .mount(&server)
+        .await;
+
+    let import = course.get_outcome_import_status(42).await.unwrap();
+    assert_eq!(import.id, 42);
+    assert_eq!(import.workflow_state.as_deref(), Some("succeeded"));
+}

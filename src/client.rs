@@ -243,7 +243,9 @@ impl Canvas {
     /// # Canvas API
     /// `GET /api/v1/files/:id`
     pub async fn get_file(&self, file_id: u64) -> Result<File> {
-        self.requester.get(&format!("files/{file_id}"), &[]).await
+        let mut f: File = self.requester.get(&format!("files/{file_id}"), &[]).await?;
+        f.requester = Some(Arc::clone(&self.requester));
+        Ok(f)
     }
 
     /// Fetch a single folder by ID.
@@ -251,9 +253,12 @@ impl Canvas {
     /// # Canvas API
     /// `GET /api/v1/folders/:id`
     pub async fn get_folder(&self, folder_id: u64) -> Result<Folder> {
-        self.requester
+        let mut folder: Folder = self
+            .requester
             .get(&format!("folders/{folder_id}"), &[])
-            .await
+            .await?;
+        folder.requester = Some(Arc::clone(&self.requester));
+        Ok(folder)
     }
 
     /// Fetch a single progress object by ID.
@@ -261,9 +266,12 @@ impl Canvas {
     /// # Canvas API
     /// `GET /api/v1/progress/:id`
     pub async fn get_progress(&self, progress_id: u64) -> Result<Progress> {
-        self.requester
+        let mut p: Progress = self
+            .requester
             .get(&format!("progress/{progress_id}"), &[])
-            .await
+            .await?;
+        p.requester = Some(Arc::clone(&self.requester));
+        Ok(p)
     }
 
     // -------------------------------------------------------------------------

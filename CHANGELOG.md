@@ -7,6 +7,85 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-05-22
+
+### Added
+- **Instance methods across all core resources** — every major struct now carries a
+  `requester` field and supports method calls directly on the returned object, matching
+  the Python `canvasapi` library's interface:
+  - **Tab** — `update`
+  - **Enrollment** — `accept`, `reject`, `deactivate`, `reactivate`
+  - **Progress** — `query`
+  - **FeatureFlag** — `delete`, `set_feature_flag`
+  - **File** — `update`, `delete`, `get_contents`, `download`
+  - **Folder** — `update`, `delete`, `get_files`, `get_folders`, `create_folder`, `copy_file`
+  - **Page + PageRevision** — `edit`, `delete`, `get_revisions`, `get_revision_by_id`,
+    `show_latest_revision`, `revert_to_revision`; group context support
+  - **Section** — `edit`, `delete`, `enroll_user`, `get_enrollments`,
+    `cross_list_section`, `decross_list_section`, `get_assignment_override`,
+    `get_multiple_submissions`, `submissions_bulk_update`
+  - **Module** — `edit`, `delete`, `relock`, `get_module_items`, `get_module_item`,
+    `create_module_item` (validates content_id requirement per type)
+  - **ModuleItem** — `edit`, `delete`, `complete`, `uncomplete`
+  - **DiscussionTopic** — `update`, `delete`, `post_entry`, `get_topic_entries`,
+    `get_entries`, `mark_as_read`, `mark_as_unread`, `mark_entries_as_read`,
+    `mark_entries_as_unread`, `subscribe`, `unsubscribe`; course and group context
+  - **DiscussionEntry** — `update`, `delete`, `post_reply`, `get_replies`,
+    `mark_as_read`, `mark_as_unread`, `rate` (validates 0–1 range)
+  - **Submission** — `edit`, `mark_read`, `mark_unread`, `create_submission_peer_review`,
+    `delete_submission_peer_review`, `get_submission_peer_reviews`
+  - **Assignment** — `edit`, `delete`, `get_submissions`, `get_submission`, `submit`,
+    `get_overrides`, `get_override`, `create_override`, `get_peer_reviews`,
+    `get_gradeable_students`, `set_extensions`, `submissions_bulk_update`
+  - **AssignmentGroup** — `edit`, `delete`
+  - **AssignmentOverride** — `edit`, `delete`
+  - **Quiz** — `edit`, `delete`, `create_question`, `get_question`, `get_questions`,
+    `create_submission`, `get_submission`, `get_submissions`, `get_statistics`,
+    `set_extensions`
+  - **QuizSubmission** — `complete`, `get_submission_questions`, `get_times`,
+    `update_score_and_comments`
+  - **User** — `edit`, `get_profile`, `terminate_sessions`, `merge_into`,
+    `get_avatars`, `get_page_views`, `get_observees`, `add_observee`, `remove_observee`,
+    `show_observee`, `get_observers`, `create_pairing_code`, `get_colors`, `get_color`,
+    `update_color`, `get_missing_submissions`, `get_files`, `get_folders`, `create_folder`,
+    `get_file_quota`, `get_user_logins`, `get_settings`, `update_settings`,
+    `create_communication_channel`, `get_authentication_events`, `get_features`,
+    `get_enabled_features`, `export_content`, `get_content_exports`, `get_eportfolios`,
+    `get_open_poll_sessions`, `get_closed_poll_sessions`
+  - **Group** — `edit`, `delete`, `get_users`, `get_memberships`, `create_membership`,
+    `get_membership`, `update_membership`, `remove_user`, `invite`, `get_files`,
+    `get_file`, `get_folders`, `get_folder`, `create_folder`, `get_pages`, `get_page`,
+    `create_page`, `get_discussion_topics`, `get_discussion_topic`,
+    `create_discussion_topic`, `get_tabs`, `get_content_migrations`,
+    `get_content_exports`, `preview_html`, `resolve_path`
+  - **GroupMembership** — `update`, `remove_self`
+  - **GroupCategory** — `update`, `delete`, `get_groups`, `get_users`,
+    `create_group`, `assign_members`
+- **New Course methods** — `conclude`, `reset`, `get_settings`, `update_settings`,
+  `get_late_policy`, `get_multiple_submissions`, `submissions_bulk_update`,
+  `enroll_user`, `create_module`, `create_discussion_topic`,
+  `get_assignment_groups`, `create_assignment_group`,
+  `get_group_categories`, `create_group_category`
+- **New Account methods** — `update`, `get_subaccounts`, `create_subaccount`,
+  `get_users`, `create_user`, `delete_user`, `get_courses`, `get_groups`,
+  `get_group_categories`, `create_group_category`, `get_admins`, `create_admin`,
+  `get_authentication_providers`, `get_reports`, `create_report`,
+  `get_outcome_import_status`
+- **`Requester::put_void`, `post_void_with_params`** — new helpers for endpoints
+  that return 204 No Content
+- **`Requester::get_url_bytes`** — raw URL GET for file content download
+
+### Changed
+- `Course::get_modules`, `get_module`, `get_assignments`, `get_assignment`,
+  `create_assignment`, `get_quizzes`, `get_quiz`, `create_quiz`,
+  `get_discussion_topics`, `get_discussion_topic`, `get_pages`, `get_page`,
+  `get_tabs`, `get_enrollments`, `get_files` and other listing/fetching methods
+  now inject the `requester` (and parent context ids where needed) into returned
+  structs so instance methods work out of the box.
+- `DiscussionTopic.course_id_ctx` (skip-serialized) added alongside the real
+  `course_id` JSON field to carry the context course id for topics fetched through
+  the Course API.
+
 ## [0.4.0] - 2026-05-20
 
 ### Added
@@ -134,6 +213,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI: fmt, clippy, tests, doc build, MSRV 1.75 check
 - MIT license
 
+[0.5.0]: https://github.com/RobertConde/canvas-lms-api/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/RobertConde/canvas-lms-api/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/RobertConde/canvas-lms-api/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/RobertConde/canvas-lms-api/compare/v0.1.2...v0.2.0

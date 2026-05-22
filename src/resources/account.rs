@@ -11,12 +11,25 @@ use crate::{
         external_tool::{ExternalTool, ExternalToolParams},
         feature::{Feature, FeatureFlag},
         grading_standard::{GradingStandard, GradingStandardParams},
+        group::{Group, GroupCategory, GroupCategoryParams},
         outcome::{OutcomeGroup, UpdateOutcomeGroupParams},
         role::{Role, RoleParams},
         rubric::{Rubric, RubricParams},
         sis_import::SisImport,
+        user::User,
     },
 };
+
+/// Parameters for updating an account.
+#[derive(Debug, Default, Clone, serde::Serialize)]
+pub struct UpdateAccountParams {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub default_time_zone: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub default_storage_quota_mb: Option<u64>,
+}
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
@@ -607,12 +620,15 @@ impl Account {
     /// # Canvas API
     /// `GET /api/v1/accounts/:account_id/features/flags/:feature`
     pub async fn get_feature_flag(&self, feature: &str) -> Result<FeatureFlag> {
-        self.req()
+        let mut ff: FeatureFlag = self
+            .req()
             .get(
                 &format!("accounts/{}/features/flags/{feature}", self.id),
                 &[],
             )
-            .await
+            .await?;
+        ff.requester = self.requester.clone();
+        Ok(ff)
     }
 
     /// List all enabled feature names for this account.
@@ -622,6 +638,236 @@ impl Account {
     pub async fn get_enabled_features(&self) -> Result<Vec<String>> {
         self.req()
             .get(&format!("accounts/{}/features/enabled", self.id), &[])
+            .await
+    }
+
+    /// Update this account.
+    ///
+    /// # Canvas API
+    /// `PUT /api/v1/accounts/:id`
+    pub async fn update(&self, params: UpdateAccountParams) -> Result<Account> {
+        let form = wrap_params("account", &params);
+        let mut a: Account = self
+            .req()
+            .put(&format!("accounts/{}", self.id), &form)
+            .await?;
+        a.requester = self.requester.clone();
+        Ok(a)
+    }
+
+    /// Stream all sub-accounts of this account.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/accounts/:id/sub_accounts`
+    pub fn get_subaccounts(&self) -> PageStream<Account> {
+        PageStream::new_with_injector(
+            Arc::clone(self.req()),
+            &format!("accounts/{}/sub_accounts", self.id),
+            vec![],
+            |mut a: Account, req| {
+                a.requester = Some(Arc::clone(&req));
+                a
+            },
+        )
+    }
+
+    /// Create a sub-account under this account.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/accounts/:id/sub_accounts`
+    pub async fn create_subaccount(&self, name: &str) -> Result<Account> {
+        let params = vec![("account[name]".to_string(), name.to_string())];
+        let mut a: Account = self
+            .req()
+            .post(&format!("accounts/{}/sub_accounts", self.id), &params)
+            .await?;
+        a.requester = self.requester.clone();
+        Ok(a)
+    }
+
+    /// Stream all users in this account.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/accounts/:id/users`
+    pub fn get_users(&self) -> PageStream<User> {
+        PageStream::new_with_injector(
+            Arc::clone(self.req()),
+            &format!("accounts/{}/users", self.id),
+            vec![],
+            |mut u: User, req| {
+                u.requester = Some(Arc::clone(&req));
+                u
+            },
+        )
+    }
+
+    /// Delete a user from this account.
+    ///
+    /// # Canvas API
+    /// `DELETE /api/v1/accounts/:id/users/:user_id`
+    pub async fn delete_user(&self, user_id: u64) -> Result<User> {
+        let mut u: User = self
+            .req()
+            .delete(
+                &format!("accounts/{}/users/{user_id}", self.id),
+                &[],
+            )
+            .await?;
+        u.requester = self.requester.clone();
+        Ok(u)
+    }
+
+    /// Stream all courses in this account.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/accounts/:id/courses`
+    pub fn get_courses(
+        &self,
+    ) -> PageStream<crate::resources::course::Course> {
+        PageStream::new_with_injector(
+            Arc::clone(self.req()),
+            &format!("accounts/{}/courses", self.id),
+            vec![],
+            move |mut c: crate::resources::course::Course, req| {
+                c.requester = Some(Arc::clone(&req));
+                c
+            },
+        )
+    }
+
+    /// Stream all groups in this account.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/accounts/:id/groups`
+    pub fn get_groups(&self) -> PageStream<Group> {
+        PageStream::new_with_injector(
+            Arc::clone(self.req()),
+            &format!("accounts/{}/groups", self.id),
+            vec![],
+            |mut g: Group, req| {
+                g.requester = Some(Arc::clone(&req));
+                g
+            },
+        )
+    }
+
+    /// Stream all group categories in this account.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/accounts/:id/group_categories`
+    pub fn get_group_categories(&self) -> PageStream<GroupCategory> {
+        PageStream::new_with_injector(
+            Arc::clone(self.req()),
+            &format!("accounts/{}/group_categories", self.id),
+            vec![],
+            |mut gc: GroupCategory, req| {
+                gc.requester = Some(Arc::clone(&req));
+                gc
+            },
+        )
+    }
+
+    /// Create a group category in this account.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/accounts/:id/group_categories`
+    pub async fn create_group_category(&self, params: GroupCategoryParams) -> Result<GroupCategory> {
+        let form = wrap_params("group_category", &params);
+        let mut gc: GroupCategory = self
+            .req()
+            .post(&format!("accounts/{}/group_categories", self.id), &form)
+            .await?;
+        gc.requester = self.requester.clone();
+        Ok(gc)
+    }
+
+    /// Stream all admins for this account.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/accounts/:id/admins`
+    pub fn get_admins(&self) -> PageStream<serde_json::Value> {
+        PageStream::new(
+            Arc::clone(self.req()),
+            &format!("accounts/{}/admins", self.id),
+            vec![],
+        )
+    }
+
+    /// Create an admin for this account.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/accounts/:id/admins`
+    pub async fn create_admin(&self, user_id: u64) -> Result<serde_json::Value> {
+        let params = vec![("user_id".to_string(), user_id.to_string())];
+        self.req()
+            .post(&format!("accounts/{}/admins", self.id), &params)
+            .await
+    }
+
+    /// Stream all authentication providers for this account.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/accounts/:id/authentication_providers`
+    pub fn get_authentication_providers(&self) -> PageStream<serde_json::Value> {
+        PageStream::new(
+            Arc::clone(self.req()),
+            &format!("accounts/{}/authentication_providers", self.id),
+            vec![],
+        )
+    }
+
+    /// Create a new user in this account.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/accounts/:id/users`
+    pub async fn create_user(&self, params: &[(String, String)]) -> Result<User> {
+        let mut u: User = self
+            .req()
+            .post(&format!("accounts/{}/users", self.id), params)
+            .await?;
+        u.requester = self.requester.clone();
+        Ok(u)
+    }
+
+    /// Stream all reports of a given type for this account.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/accounts/:id/reports/:report_type`
+    pub fn get_reports(&self, report_type: &str) -> PageStream<serde_json::Value> {
+        PageStream::new(
+            Arc::clone(self.req()),
+            &format!("accounts/{}/reports/{report_type}", self.id),
+            vec![],
+        )
+    }
+
+    /// Create (run) a report for this account.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/accounts/:id/reports/:report_type`
+    pub async fn create_report(
+        &self,
+        report_type: &str,
+        params: &[(String, String)],
+    ) -> Result<serde_json::Value> {
+        self.req()
+            .post(
+                &format!("accounts/{}/reports/{report_type}", self.id),
+                params,
+            )
+            .await
+    }
+
+    /// Get the status of an outcome import for this account.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/accounts/:id/outcome_imports/:id`
+    pub async fn get_outcome_import_status(&self, import_id: u64) -> Result<serde_json::Value> {
+        self.req()
+            .get(
+                &format!("accounts/{}/outcome_imports/{import_id}", self.id),
+                &[],
+            )
             .await
     }
 }

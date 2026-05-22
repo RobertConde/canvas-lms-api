@@ -283,70 +283,156 @@ PlannerNote/PlannerOverride, Role. 214 tests, 0 clippy warnings.
 
 v0.5.0 fills the method gaps across all existing resources. v0.1–v0.4 added structs and basic CRUD; the resources below were identified as having zero or near-zero instance methods despite the Python library having substantial coverage.
 
-**Struct-only resources (0 instance methods today — full method impl needed):**
+Every method added in v0.5.0 has a matching wiremock integration test (mirroring the Python `canvasapi` test suite). Resources needing parent context (Tab → `course_id`, Page → `course_id`/`group_id`, DiscussionTopic → `course_id`/`group_id`, Module → `course_id`, ModuleItem → `course_id`+`module_id`, Submission → `course_id`) get `#[serde(skip)]` fields for those ids, injected by callers via `PageStream::new_with_injector` or direct field assignment.
 
-| Resource | Key methods to add |
+#### Implementation order
+
+**Batch 1 — Quick wins (small gaps, 1-4 methods each)**
+
+| Resource | Methods | API |
+|---|---|---|
+| `Tab` | `update()` | `PUT courses/:c/tabs/:id` |
+| `Enrollment` | `accept()`, `reject()`, `deactivate()`, `reactivate()` | `POST/DELETE/PUT courses/:c/enrollments/:id/...` |
+| `Progress` | `query()` | `GET progress/:id` |
+| `FeatureFlag` | `delete()`, `set_feature_flag(state)` | `DELETE/PUT :ctx_type/:ctx_id/features/flags/:feature` |
+
+`Tab` also needs `#[serde(skip)] pub(crate) course_id: Option<u64>` and `Course::get_tabs()` updated to inject it. `Enrollment` already has `course_id`. `Course::get_enrollments()`, `Canvas::get_enrollment()`, `Canvas::get_progress()` updated to inject requester.
+
+Tests: `tests/tab_test.rs`, `tests/enrollment_test.rs`, `tests/progress_test.rs`, `tests/feature_flag_test.rs`
+
+**Batch 2 — File resources**
+
+| Resource | Methods | API |
+|---|---|---|
+| `File` | `update()`, `delete()`, `get_contents()`, `download(path)` | `PUT/DELETE files/:id`, raw URL GET |
+| `Folder` | `update()`, `delete()`, `get_files()`, `get_folders()`, `create_folder()`, `copy_file()` | `PUT/DELETE folders/:id`, `GET/POST folders/:id/...` |
+
+`get_contents()` / `download()` use a new `Requester::get_url_bytes(url)` helper in `src/http.rs` that GETs an absolute URL with auth. `Course::get_files()`, `Course::get_file()`, `Course::get_folder()`, `Course::get_folders()` updated to inject requester.
+
+Tests: `tests/file_test.rs`, `tests/folder_test.rs`
+
+**Batch 3 — Page + PageRevision**
+
+`Page` gets `#[serde(skip)] pub(crate) course_id: Option<u64>` and `pub(crate) group_id: Option<u64>` + `fn parent_prefix()` helper. New `PageRevision` struct in same file.
+
+| Resource | Methods | API |
+|---|---|---|
+| `Page` | `edit()`, `delete()`, `get_revisions()`, `get_revision_by_id()`, `show_latest_revision()`, `revert_to_revision()` | `PUT/DELETE/GET :parent/pages/:url/...` |
+| `PageRevision` | data struct only | — |
+
+`Course::get_pages()`, `Course::get_page()` updated to inject requester + `course_id`. Same for `Group`.
+
+Tests: `tests/page_test.rs`
+
+**Batch 4 — Section**
+
+`Section` already has `course_id`. Add requester + CanvasResource derive.
+
+Methods: `edit()`, `delete()`, `enroll_user()`, `get_enrollments()`, `cross_list_section()`, `decross_list_section()`, `get_assignment_override()`, `get_multiple_submissions()`
+
+`Course::get_sections()`, `Course::get_section()` updated to inject requester.
+
+Tests: `tests/section_test.rs`
+
+**Batch 5 — Module + ModuleItem**
+
+`Module` gets `#[serde(skip)] pub(crate) course_id: Option<u64>`. `ModuleItem` gets `course_id` + `module_id`.
+
+| Resource | Methods |
 |---|---|
-| `Submission` | `edit()` (grade/comment), `mark_read/unread()`, `upload_comment()`, peer review CRUD |
-| `Group` | `edit()`, `delete()`, member management, full content surface (files, pages, discussions, tabs, migrations) — `get_collaborations()` already added in v0.4.0 |
-| `GroupMembership` *(new struct)* | `update()`, `remove_self()`, `remove_user()` |
-| `GroupCategory` *(new struct)* | `get_groups()`, `create_group()`, `get_users()`, `assign_members()`, `update()`, `delete()` |
-| `Section` | `edit()`, `delete()`, `enroll_user()`, `get_enrollments()`, `cross_list_section()`, `decross_list_section()`, `get_assignment_override()` |
-| `Module` | `edit()`, `delete()`, `get_module_items()`, `get_module_item()`, `create_module_item()`, `relock()` |
+| `Module` | `edit()`, `delete()`, `relock()`, `get_module_items()`, `get_module_item()`, `create_module_item()` |
 | `ModuleItem` | `edit()`, `delete()`, `complete()`, `uncomplete()` |
-| `DiscussionTopic` | `update()`, `delete()`, `post_entry()`, `get_topic_entries()`, `get_entries()`, `mark_as_read/unread()`, `mark_entries_as_read/unread()`, `subscribe/unsubscribe()`, `get_parent()` |
-| `DiscussionEntry` *(new struct)* | `update()`, `delete()`, `post_reply()`, `get_replies()`, `mark_as_read/unread()`, `rate()`, `get_discussion()` |
-| `Page` | `edit()`, `delete()`, `get_revisions()`, `get_revision_by_id()`, `show_latest_revision()`, `revert_to_revision()`, `get_parent()` |
-| `PageRevision` *(new struct)* | `get_parent()` |
-| `File` | `update()`, `delete()`, `get_contents()`, `download()` |
-| `Folder` | `update()`, `delete()`, `get_files()`, `get_folders()`, `create_folder()`, `copy_file()`, `upload()` |
-| `Enrollment` | `accept()`, `reject()`, `deactivate()`, `reactivate()` |
-| `Tab` | `update()` |
 
-**Assignment depth** — `Assignment` struct has no instance methods today:
-- `edit()`, `delete()`, `create_override()`, `get_override()`, `get_overrides()`, `get_submissions()`, `get_submission()`, `submit()`, `upload_to_submission()`, `get_peer_reviews()`, `get_gradeable_students()`, `set_extensions()`, `submissions_bulk_update()`, moderated grading methods, `get_grade_change_events()`
-- New structs: `AssignmentGroup` (`edit`, `delete`), `AssignmentOverride` (`edit`, `delete`)
-- New Course methods: `get_assignment_groups()`, `create_assignment_group()`, `create_assignment_overrides()`, `update_assignment_overrides()`, `get_assignments_for_group()`
+Add `Course::create_module()`. Update `Course::get_modules()`, `Course::get_module()` to inject requester + `course_id`.
 
-**Quiz depth** — `Quiz` struct has no instance methods today:
-- `edit()`, `delete()`, question CRUD, question group CRUD, submission lifecycle, reports, `get_statistics()`, `set_extensions()`, `broadcast_message()`, moderated quiz methods
-- New structs: `QuizQuestion`, `QuizSubmission`, `QuizSubmissionQuestion`
+Tests: `tests/module_test.rs`
 
-**User depth** — `User` has ~5 methods vs ~48 in Python:
-- Profile: `edit()`, `merge_into()`, `get_profile()`, `update_settings()`, `terminate_sessions()`
-- Observees/observers: `get_observees()`, `add_observee()`, `remove_observee()`, `show_observee()`, `get_observers()`, `create_pairing_code()`
-- Dashboard colors: `get_colors()`, `get_color()`, `update_color()`
-- Content: `get_files()`, `get_folders()`, `create_folder()`, `upload()`, `get_file_quota()`, `resolve_path()`
-- Cross-course: `get_assignments()`, `get_missing_submissions()`
-- Misc: `get_avatars()`, `get_page_views()`, `get_user_logins()`, `get_authentication_events()`, grade change events, features, content exports, ePortfolios
+**Batch 6 — DiscussionTopic + DiscussionEntry**
 
-**Course depth** — ~80 methods still missing:
-- Lifecycle: `conclude()`, `reset()`
-- Settings: `get_settings()`, `update_settings()`
-- Late policy: `get_late_policy()`, `create_late_policy()`, `edit_late_policy()`
-- Custom gradebook columns: `get_custom_columns()`, `create_custom_column()`, `column_data_bulk_update()`
-- Bulk submissions: `get_multiple_submissions()`, `submissions_bulk_update()`
-- Analytics: course-level and user-in-course assignment/participation/summary data
-- Outcomes: `get_all_outcome_links_in_context()`, `get_outcome_results()`, `get_outcome_result_rollups()`, `import_outcome()`
-- Group categories, external feeds, epub exports, usage rights, file quota, grading standards CRUD, New Quizzes CRUD
+`DiscussionTopic` gets `#[serde(skip)] pub(crate) group_id: Option<u64>` (already has `course_id`) + `fn parent_prefix()`. New `DiscussionEntry` struct in same file with `requester`, `course_id`, `group_id`, `topic_id`.
 
-**Account depth** — ~50 methods still missing:
-- Sub-accounts, admin management, user management, auth providers, SSO settings
-- Department-level analytics (6 methods), notifications, reports, outcome imports
-- `create_account()`, `update()`, `delete()`
-
-**Small gaps in already-covered resources:**
-
-| Resource | Missing |
+| Resource | Methods |
 |---|---|
-| `ExternalTool` | `get_parent()`, `get_sessionless_launch_url()` |
-| `ContentMigration` | `get_parent()`, `get_progress()`, `get_selective_data()` |
-| `BlueprintTemplate` | `change_blueprint_restrictions()` |
+| `DiscussionTopic` | `update()`, `delete()`, `post_entry()`, `get_topic_entries()`, `get_entries()`, `mark_as_read()`, `mark_as_unread()`, `mark_entries_as_read()`, `mark_entries_as_unread()`, `subscribe()`, `unsubscribe()` |
+| `DiscussionEntry` | `update()`, `delete()`, `post_reply()`, `get_replies()`, `mark_as_read()`, `mark_as_unread()`, `rate()` |
+
+Add `Course::create_discussion_topic()`. Update `Course::get_discussion_topics()`, `Course::get_discussion_topic()` to inject requester + `course_id`. Same for `Group`.
+
+Tests: `tests/discussion_topic_test.rs`
+
+**Batch 7 — Submission**
+
+`Submission` gets `#[serde(skip)] pub(crate) course_id: Option<u64>` (already has `assignment_id`, `user_id`).
+
+Methods: `edit()`, `mark_read()`, `mark_unread()`, `create_submission_peer_review()`, `delete_submission_peer_review()`, `get_submission_peer_reviews()`
+
+Tests: `tests/submission_test.rs`
+
+**Batch 8 — Assignment depth**
+
+`Assignment` gets `#[serde(skip)] pub(crate) course_id: Option<u64>`. New structs `AssignmentGroup` and `AssignmentOverride` in same file.
+
+| Resource | Methods |
+|---|---|
+| `Assignment` | `edit()`, `delete()`, `get_submissions()`, `get_submission()`, `submit()`, `get_overrides()`, `get_override()`, `create_override()`, `get_peer_reviews()`, `get_gradeable_students()`, `set_extensions()`, `submissions_bulk_update()` |
+| `AssignmentGroup` | `edit()`, `delete()` |
+| `AssignmentOverride` | `edit()`, `delete()` |
+
+Add `Course::get_assignment_groups()`, `Course::create_assignment_group()`. Update `Course::get_assignments()`, `Course::get_assignment()`, `Course::create_assignment()` to inject requester + `course_id`.
+
+Tests: extend `tests/assignment_test.rs`
+
+**Batch 9 — Quiz depth**
+
+`Quiz` gets `#[serde(skip)] pub(crate) course_id: Option<u64>`. New structs `QuizQuestion`, `QuizSubmission`.
+
+| Resource | Methods |
+|---|---|
+| `Quiz` | `edit()`, `delete()`, `create_question()`, `get_question()`, `get_questions()`, `create_submission()`, `get_submission()`, `get_submissions()`, `get_statistics()`, `set_extensions()` |
+| `QuizSubmission` | `complete()`, `get_submission_questions()`, `get_times()`, `update_score_and_comments()` |
+| `QuizQuestion` | data struct only |
+
+Update `Course::get_quizzes()`, `Course::get_quiz()`, `Course::create_quiz()` to inject requester + `course_id`.
+
+Tests: extend `tests/quiz_test.rs`
+
+**Batch 10 — User depth**
+
+`User` gets requester + CanvasResource derive. ~30 methods covering: `edit()`, `get_profile()`, `terminate_sessions()`, `merge_into()`, `get_avatars()`, `get_page_views()`, `get_observees()`, `add_observee()`, `remove_observee()`, `show_observee()`, `get_observers()`, `create_pairing_code()`, `get_colors()`, `get_color()`, `update_color()`, `get_missing_submissions()`, `get_enrollments()`, `get_courses()`, `get_files()`, `get_folders()`, `create_folder()`, `get_file_quota()`, `get_communication_channels()`, `get_user_logins()`, `get_authentication_events()`, `get_features()`, `export_content()`, `get_content_exports()`, `get_eportfolios()`, `get_open_poll_sessions()`, `get_closed_poll_sessions()`.
+
+`Canvas::get_user()` updated to inject requester. Tests: extend `tests/user_test.rs`
+
+**Batch 11 — Group depth + GroupMembership + GroupCategory**
+
+`Group` already has requester + CanvasResource derive. Add ~25 methods: `edit()`, `delete()`, `get_users()`, `get_memberships()`, `create_membership()`, `get_membership()`, `update_membership()`, `remove_user()`, `invite()`, `get_files()`, `get_file()`, `get_folders()`, `get_folder()`, `create_folder()`, `get_pages()`, `get_page()`, `create_page()`, `get_discussion_topics()`, `get_discussion_topic()`, `create_discussion_topic()`, `get_tabs()`, `get_content_migrations()`, `get_content_exports()`, `preview_html()`, `resolve_path()`.
+
+New struct `GroupMembership` (methods: `update()`, `remove_self()`, `remove_user()`).
+New struct `GroupCategory` (methods: `get_groups()`, `get_users()`, `create_group()`, `delete()`, `assign_members()`, `update()`).
+
+Add `Course::get_group_categories()`, `Course::create_group_category()`.
+
+Tests: extend `tests/group_test.rs`
+
+**Batch 12 — Course remaining depth**
+
+Add to `Course`: `conclude()`, `reset()`, `get_settings()`, `update_settings()`, `get_late_policy()`, `create_late_policy()`, `edit_late_policy()`, `get_custom_columns()`, `create_custom_column()`, `get_multiple_submissions()`, `submissions_bulk_update()`, `enroll_user()`.
+
+Tests: extend `tests/course_test.rs`
+
+**Batch 13 — Account remaining depth**
+
+Add to `Account`: `update()`, `create_subaccount()`, `get_subaccounts()`, `get_users()`, `create_user()`, `delete_user()`, `get_courses()`, `get_groups()`, `get_group_categories()`, `create_group_category()`, `get_enrollment_terms()`, `create_enrollment_term()`, `get_admins()`, `create_admin()`, `get_authentication_providers()`, `get_reports()`, `create_report()`.
+
+Tests: extend `tests/account_test.rs`
+
+**Small gaps in already-covered resources** (addressed inline with the batch above, or standalone):
+
+| Resource | Methods added |
+|---|---|
+| `ExternalTool` | `get_sessionless_launch_url()` |
+| `ContentMigration` | `get_progress()`, `get_selective_data()` |
 | `OutcomeGroup` | `import_outcome_group()` |
-| `OutcomeLink` | `get_outcome()`, `get_outcome_group()` |
 | `CommunicationChannel` | `update_multiple_preferences()` |
-| `FeatureFlag` | `delete()`, `set_feature_flag()` |
-| `Progress` | `query()` — poll for updated status |
 
 ### v1.0.0
 Full API surface. Semver stability guarantee. MSRV policy pinned to N-2 stable.

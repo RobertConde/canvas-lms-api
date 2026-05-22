@@ -99,6 +99,39 @@ impl Requester {
         Ok(resp.json().await?)
     }
 
+    /// PUT an endpoint and discard the response body (for 204 No Content responses).
+    pub(crate) async fn put_void(&self, endpoint: &str) -> Result<()> {
+        let url = self.base_url.join(endpoint)?;
+        info!("PUT {url}");
+        let resp = self
+            .client
+            .put(url)
+            .header("Authorization", self.auth_header())
+            .send()
+            .await?;
+        check_status(resp).await?;
+        Ok(())
+    }
+
+    /// POST an endpoint with form params and discard the response body.
+    pub(crate) async fn post_void_with_params(
+        &self,
+        endpoint: &str,
+        params: &[(String, String)],
+    ) -> Result<()> {
+        let url = self.base_url.join(endpoint)?;
+        info!("POST {url}");
+        let resp = self
+            .client
+            .post(url)
+            .header("Authorization", self.auth_header())
+            .form(params)
+            .send()
+            .await?;
+        check_status(resp).await?;
+        Ok(())
+    }
+
     /// DELETE an endpoint and discard the response body (for 204 No Content responses).
     pub(crate) async fn delete_void(&self, endpoint: &str) -> Result<()> {
         let url = self.base_url.join(endpoint)?;
@@ -148,6 +181,13 @@ impl Requester {
             .await?;
         let resp = check_status(resp).await?;
         Ok(resp.json().await?)
+    }
+
+    /// GET an absolute URL (e.g. a Canvas file download URL) and return the raw bytes.
+    pub(crate) async fn get_url_bytes(&self, url: &str) -> crate::error::Result<Vec<u8>> {
+        let url: Url = url.parse()?;
+        let resp = self.get_raw(url, &[]).await?;
+        Ok(resp.bytes().await?.to_vec())
     }
 
     // New Quizzes API (`/api/quiz/v1/`) — enabled by the `new-quizzes` feature.

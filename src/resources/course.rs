@@ -4,7 +4,7 @@ use crate::{
     pagination::PageStream,
     params::wrap_params,
     resources::{
-        assignment::Assignment,
+        assignment::{Assignment, AssignmentGroup},
         blueprint::{BlueprintSubscription, BlueprintTemplate},
         collaboration::Collaboration,
         content_export::{ContentExport, ContentExportParams},
@@ -18,7 +18,7 @@ use crate::{
         gradebook_history::{Day, Grader, SubmissionHistory, SubmissionVersion},
         grading_period::GradingPeriod,
         grading_standard::GradingStandard,
-        group::Group,
+        group::{Group, GroupCategory},
         lti_resource_link::{CreateLtiResourceLinkParams, LtiResourceLink},
         module::Module,
         outcome::{OutcomeGroup, OutcomeLink, UpdateOutcomeGroupParams},
@@ -74,10 +74,16 @@ impl Course {
     /// # Canvas API
     /// `GET /api/v1/courses/:course_id/assignments`
     pub fn get_assignments(&self) -> PageStream<Assignment> {
-        PageStream::new(
+        let course_id = self.id;
+        PageStream::new_with_injector(
             Arc::clone(self.req()),
             &format!("courses/{}/assignments", self.id),
             vec![],
+            move |mut a: Assignment, req| {
+                a.requester = Some(Arc::clone(&req));
+                a.course_id = Some(course_id);
+                a
+            },
         )
     }
 
@@ -86,12 +92,16 @@ impl Course {
     /// # Canvas API
     /// `GET /api/v1/courses/:course_id/assignments/:id`
     pub async fn get_assignment(&self, assignment_id: u64) -> Result<Assignment> {
-        self.req()
+        let mut a: Assignment = self
+            .req()
             .get(
                 &format!("courses/{}/assignments/{assignment_id}", self.id),
                 &[],
             )
-            .await
+            .await?;
+        a.requester = Some(Arc::clone(self.req()));
+        a.course_id = Some(self.id);
+        Ok(a)
     }
 
     /// Create a new assignment in this course.
@@ -100,9 +110,49 @@ impl Course {
     /// `POST /api/v1/courses/:id/assignments`
     pub async fn create_assignment(&self, params: CreateAssignmentParams) -> Result<Assignment> {
         let form = wrap_params("assignment", &params);
-        self.req()
+        let mut a: Assignment = self
+            .req()
             .post(&format!("courses/{}/assignments", self.id), &form)
-            .await
+            .await?;
+        a.requester = Some(Arc::clone(self.req()));
+        a.course_id = Some(self.id);
+        Ok(a)
+    }
+
+    /// Stream all assignment groups in this course.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:id/assignment_groups`
+    pub fn get_assignment_groups(&self) -> PageStream<AssignmentGroup> {
+        let course_id = self.id;
+        PageStream::new_with_injector(
+            Arc::clone(self.req()),
+            &format!("courses/{}/assignment_groups", self.id),
+            vec![],
+            move |mut g: AssignmentGroup, req| {
+                g.requester = Some(Arc::clone(&req));
+                g.course_id = Some(course_id);
+                g
+            },
+        )
+    }
+
+    /// Create a new assignment group in this course.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/courses/:id/assignment_groups`
+    pub async fn create_assignment_group(
+        &self,
+        params: crate::resources::assignment::AssignmentGroupParams,
+    ) -> Result<AssignmentGroup> {
+        let form = wrap_params("assignment_group", &params);
+        let mut g: AssignmentGroup = self
+            .req()
+            .post(&format!("courses/{}/assignment_groups", self.id), &form)
+            .await?;
+        g.requester = Some(Arc::clone(self.req()));
+        g.course_id = Some(self.id);
+        Ok(g)
     }
 
     /// Stream all sections in this course.
@@ -110,10 +160,14 @@ impl Course {
     /// # Canvas API
     /// `GET /api/v1/courses/:course_id/sections`
     pub fn get_sections(&self) -> PageStream<Section> {
-        PageStream::new(
+        PageStream::new_with_injector(
             Arc::clone(self.req()),
             &format!("courses/{}/sections", self.id),
             vec![],
+            |mut s: Section, req| {
+                s.requester = Some(Arc::clone(&req));
+                s
+            },
         )
     }
 
@@ -122,9 +176,12 @@ impl Course {
     /// # Canvas API
     /// `GET /api/v1/courses/:id/sections/:section_id`
     pub async fn get_section(&self, section_id: u64) -> Result<Section> {
-        self.req()
+        let mut s: Section = self
+            .req()
             .get(&format!("courses/{}/sections/{section_id}", self.id), &[])
-            .await
+            .await?;
+        s.requester = self.requester.clone();
+        Ok(s)
     }
 
     /// Stream all enrollments in this course.
@@ -132,10 +189,14 @@ impl Course {
     /// # Canvas API
     /// `GET /api/v1/courses/:course_id/enrollments`
     pub fn get_enrollments(&self) -> PageStream<Enrollment> {
-        PageStream::new(
+        PageStream::new_with_injector(
             Arc::clone(self.req()),
             &format!("courses/{}/enrollments", self.id),
             vec![],
+            |mut e: Enrollment, req| {
+                e.requester = Some(Arc::clone(&req));
+                e
+            },
         )
     }
 
@@ -184,10 +245,16 @@ impl Course {
     /// # Canvas API
     /// `GET /api/v1/courses/:id/quizzes`
     pub fn get_quizzes(&self) -> PageStream<Quiz> {
-        PageStream::new(
+        let course_id = self.id;
+        PageStream::new_with_injector(
             Arc::clone(self.req()),
             &format!("courses/{}/quizzes", self.id),
             vec![],
+            move |mut q: Quiz, req| {
+                q.requester = Some(Arc::clone(&req));
+                q.course_id = Some(course_id);
+                q
+            },
         )
     }
 
@@ -196,9 +263,13 @@ impl Course {
     /// # Canvas API
     /// `GET /api/v1/courses/:id/quizzes/:quiz_id`
     pub async fn get_quiz(&self, quiz_id: u64) -> Result<Quiz> {
-        self.req()
+        let mut q: Quiz = self
+            .req()
             .get(&format!("courses/{}/quizzes/{quiz_id}", self.id), &[])
-            .await
+            .await?;
+        q.requester = Some(Arc::clone(self.req()));
+        q.course_id = Some(self.id);
+        Ok(q)
     }
 
     /// Create a new quiz in this course.
@@ -207,9 +278,13 @@ impl Course {
     /// `POST /api/v1/courses/:id/quizzes`
     pub async fn create_quiz(&self, params: CreateQuizParams) -> Result<Quiz> {
         let form = wrap_params("quiz", &params);
-        self.req()
+        let mut q: Quiz = self
+            .req()
             .post(&format!("courses/{}/quizzes", self.id), &form)
-            .await
+            .await?;
+        q.requester = Some(Arc::clone(self.req()));
+        q.course_id = Some(self.id);
+        Ok(q)
     }
 
     /// Stream all modules in this course.
@@ -217,10 +292,16 @@ impl Course {
     /// # Canvas API
     /// `GET /api/v1/courses/:id/modules`
     pub fn get_modules(&self) -> PageStream<Module> {
-        PageStream::new(
+        let course_id = self.id;
+        PageStream::new_with_injector(
             Arc::clone(self.req()),
             &format!("courses/{}/modules", self.id),
             vec![],
+            move |mut m: Module, req| {
+                m.requester = Some(Arc::clone(&req));
+                m.course_id = Some(course_id);
+                m
+            },
         )
     }
 
@@ -229,9 +310,31 @@ impl Course {
     /// # Canvas API
     /// `GET /api/v1/courses/:id/modules/:module_id`
     pub async fn get_module(&self, module_id: u64) -> Result<Module> {
-        self.req()
+        let mut m: Module = self
+            .req()
             .get(&format!("courses/{}/modules/{module_id}", self.id), &[])
-            .await
+            .await?;
+        m.requester = Some(Arc::clone(self.req()));
+        m.course_id = Some(self.id);
+        Ok(m)
+    }
+
+    /// Create a new module in this course.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/courses/:id/modules`
+    pub async fn create_module(
+        &self,
+        params: crate::resources::module::CreateModuleParams,
+    ) -> Result<Module> {
+        let form = wrap_params("module", &params);
+        let mut m: Module = self
+            .req()
+            .post(&format!("courses/{}/modules", self.id), &form)
+            .await?;
+        m.requester = Some(Arc::clone(self.req()));
+        m.course_id = Some(self.id);
+        Ok(m)
     }
 
     /// Stream all pages in this course.
@@ -239,10 +342,16 @@ impl Course {
     /// # Canvas API
     /// `GET /api/v1/courses/:id/pages`
     pub fn get_pages(&self) -> PageStream<Page> {
-        PageStream::new(
+        let course_id = self.id;
+        PageStream::new_with_injector(
             Arc::clone(self.req()),
             &format!("courses/{}/pages", self.id),
             vec![],
+            move |mut p: Page, req| {
+                p.requester = Some(Arc::clone(&req));
+                p.course_id = Some(course_id);
+                p
+            },
         )
     }
 
@@ -251,9 +360,13 @@ impl Course {
     /// # Canvas API
     /// `GET /api/v1/courses/:id/pages/:url_or_id`
     pub async fn get_page(&self, url_or_id: &str) -> Result<Page> {
-        self.req()
+        let mut page: Page = self
+            .req()
             .get(&format!("courses/{}/pages/{url_or_id}", self.id), &[])
-            .await
+            .await?;
+        page.requester = self.requester.clone();
+        page.course_id = Some(self.id);
+        Ok(page)
     }
 
     /// Stream all discussion topics in this course.
@@ -261,10 +374,16 @@ impl Course {
     /// # Canvas API
     /// `GET /api/v1/courses/:id/discussion_topics`
     pub fn get_discussion_topics(&self) -> PageStream<DiscussionTopic> {
-        PageStream::new(
+        let course_id = self.id;
+        PageStream::new_with_injector(
             Arc::clone(self.req()),
             &format!("courses/{}/discussion_topics", self.id),
             vec![],
+            move |mut t: DiscussionTopic, req| {
+                t.requester = Some(Arc::clone(&req));
+                t.course_id_ctx = Some(course_id);
+                t
+            },
         )
     }
 
@@ -273,12 +392,34 @@ impl Course {
     /// # Canvas API
     /// `GET /api/v1/courses/:id/discussion_topics/:topic_id`
     pub async fn get_discussion_topic(&self, topic_id: u64) -> Result<DiscussionTopic> {
-        self.req()
+        let mut t: DiscussionTopic = self
+            .req()
             .get(
                 &format!("courses/{}/discussion_topics/{topic_id}", self.id),
                 &[],
             )
-            .await
+            .await?;
+        t.requester = Some(Arc::clone(self.req()));
+        t.course_id_ctx = Some(self.id);
+        Ok(t)
+    }
+
+    /// Create a new discussion topic in this course.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/courses/:id/discussion_topics`
+    pub async fn create_discussion_topic(
+        &self,
+        params: crate::resources::discussion_topic::UpdateDiscussionParams,
+    ) -> Result<DiscussionTopic> {
+        let form = wrap_params("discussion_topic", &params);
+        let mut t: DiscussionTopic = self
+            .req()
+            .post(&format!("courses/{}/discussion_topics", self.id), &form)
+            .await?;
+        t.requester = Some(Arc::clone(self.req()));
+        t.course_id_ctx = Some(self.id);
+        Ok(t)
     }
 
     /// Stream all files in this course.
@@ -286,10 +427,14 @@ impl Course {
     /// # Canvas API
     /// `GET /api/v1/courses/:id/files`
     pub fn get_files(&self) -> PageStream<File> {
-        PageStream::new(
+        PageStream::new_with_injector(
             Arc::clone(self.req()),
             &format!("courses/{}/files", self.id),
             vec![],
+            |mut f: File, req| {
+                f.requester = Some(Arc::clone(&req));
+                f
+            },
         )
     }
 
@@ -298,10 +443,16 @@ impl Course {
     /// # Canvas API
     /// `GET /api/v1/courses/:id/tabs`
     pub fn get_tabs(&self) -> PageStream<Tab> {
-        PageStream::new(
+        let course_id = self.id;
+        PageStream::new_with_injector(
             Arc::clone(self.req()),
             &format!("courses/{}/tabs", self.id),
             vec![],
+            move |mut t: Tab, req| {
+                t.requester = Some(Arc::clone(&req));
+                t.course_id = Some(course_id);
+                t
+            },
         )
     }
 
@@ -340,6 +491,40 @@ impl Course {
                 g
             },
         )
+    }
+
+    /// Stream all group categories in this course.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:id/group_categories`
+    pub fn get_group_categories(&self) -> PageStream<GroupCategory> {
+        let course_id = self.id;
+        PageStream::new_with_injector(
+            Arc::clone(self.req()),
+            &format!("courses/{course_id}/group_categories"),
+            vec![],
+            |mut gc: GroupCategory, req| {
+                gc.requester = Some(Arc::clone(&req));
+                gc
+            },
+        )
+    }
+
+    /// Create a group category in this course.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/courses/:id/group_categories`
+    pub async fn create_group_category(
+        &self,
+        params: crate::resources::group::GroupCategoryParams,
+    ) -> Result<GroupCategory> {
+        let form = wrap_params("group_category", &params);
+        let mut gc: GroupCategory = self
+            .req()
+            .post(&format!("courses/{}/group_categories", self.id), &form)
+            .await?;
+        gc.requester = Some(Arc::clone(self.req()));
+        Ok(gc)
     }
 
     /// Upload a file to this course.
@@ -917,12 +1102,15 @@ impl Course {
     /// # Canvas API
     /// `GET /api/v1/courses/:course_id/features/flags/:feature`
     pub async fn get_feature_flag(&self, feature: &str) -> Result<FeatureFlag> {
-        self.req()
+        let mut ff: FeatureFlag = self
+            .req()
             .get(
                 &format!("courses/{}/features/flags/{feature}", self.id),
                 &[],
             )
-            .await
+            .await?;
+        ff.requester = self.requester.clone();
+        Ok(ff)
     }
 
     /// List all enabled feature names for this course.
@@ -976,5 +1164,125 @@ impl Course {
         self.req()
             .post(&format!("courses/{}/lti_resource_links", self.id), &form)
             .await
+    }
+
+    /// Conclude (soft-delete) this course.
+    ///
+    /// # Canvas API
+    /// `DELETE /api/v1/courses/:id?event=conclude`
+    pub async fn conclude(&self) -> Result<serde_json::Value> {
+        self.req()
+            .delete(
+                &format!("courses/{}", self.id),
+                &[("event".to_string(), "conclude".to_string())],
+            )
+            .await
+    }
+
+    /// Reset this course to a blank state (removes all content).
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/courses/:id/reset_content`
+    pub async fn reset(&self) -> Result<Course> {
+        let mut c: Course = self
+            .req()
+            .post(&format!("courses/{}/reset_content", self.id), &[])
+            .await?;
+        c.requester = Some(Arc::clone(self.req()));
+        Ok(c)
+    }
+
+    /// Get this course's settings.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:id/settings`
+    pub async fn get_settings(&self) -> Result<serde_json::Value> {
+        self.req()
+            .get(&format!("courses/{}/settings", self.id), &[])
+            .await
+    }
+
+    /// Update this course's settings.
+    ///
+    /// # Canvas API
+    /// `PUT /api/v1/courses/:id/settings`
+    pub async fn update_settings(
+        &self,
+        params: &[(String, String)],
+    ) -> Result<serde_json::Value> {
+        self.req()
+            .put(&format!("courses/{}/settings", self.id), params)
+            .await
+    }
+
+    /// Get the late policy for this course.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:id/late_policy`
+    pub async fn get_late_policy(&self) -> Result<serde_json::Value> {
+        self.req()
+            .get(&format!("courses/{}/late_policy", self.id), &[])
+            .await
+    }
+
+    /// Stream multiple submissions for this course.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:id/students/submissions`
+    pub fn get_multiple_submissions(
+        &self,
+    ) -> PageStream<crate::resources::submission::Submission> {
+        let course_id = self.id;
+        PageStream::new_with_injector(
+            Arc::clone(self.req()),
+            &format!("courses/{}/students/submissions", self.id),
+            vec![],
+            move |mut s: crate::resources::submission::Submission, req| {
+                s.requester = Some(Arc::clone(&req));
+                s.course_id = Some(course_id);
+                s
+            },
+        )
+    }
+
+    /// Enroll a user in this course.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/courses/:id/enrollments`
+    pub async fn enroll_user(
+        &self,
+        user_id: u64,
+        enrollment_type: &str,
+    ) -> Result<crate::resources::enrollment::Enrollment> {
+        let params = vec![
+            ("enrollment[user_id]".to_string(), user_id.to_string()),
+            (
+                "enrollment[type]".to_string(),
+                enrollment_type.to_string(),
+            ),
+        ];
+        let mut e: crate::resources::enrollment::Enrollment =
+            self.req().post(&format!("courses/{}/enrollments", self.id), &params).await?;
+        e.requester = Some(Arc::clone(self.req()));
+        Ok(e)
+    }
+
+    /// Bulk-update grades for this course asynchronously.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/courses/:id/submissions/update_grades`
+    pub async fn submissions_bulk_update(
+        &self,
+        params: &[(String, String)],
+    ) -> Result<crate::resources::progress::Progress> {
+        let mut p: crate::resources::progress::Progress = self
+            .req()
+            .post(
+                &format!("courses/{}/submissions/update_grades", self.id),
+                params,
+            )
+            .await?;
+        p.requester = Some(Arc::clone(self.req()));
+        Ok(p)
     }
 }

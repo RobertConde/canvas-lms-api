@@ -25,7 +25,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         continue-on-error: true
-      - run: cargo test ${{ matrix.features }}
+      - uses: taiki-e/install-action@nextest
+      - run: cargo nextest run ${{ matrix.features }}
 
   lint:
     name: Lint

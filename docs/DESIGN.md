@@ -220,8 +220,8 @@ unless secrets are provided.
 ### `ci.yml` — runs on every push + PR
 1. `cargo fmt --check`
 2. `cargo clippy --features full -- -D warnings`
-3. `cargo test --features full`
-4. `cargo test --no-default-features --features blocking`
+3. `cargo nextest run --features full`
+4. `cargo nextest run --no-default-features --features blocking`
 5. `cargo doc --no-deps --features full` (with `RUSTDOCFLAGS="-D warnings"`)
 6. MSRV check: `cargo check` on Rust 1.75
 

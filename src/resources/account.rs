@@ -708,10 +708,7 @@ impl Account {
     pub async fn delete_user(&self, user_id: u64) -> Result<User> {
         let mut u: User = self
             .req()
-            .delete(
-                &format!("accounts/{}/users/{user_id}", self.id),
-                &[],
-            )
+            .delete(&format!("accounts/{}/users/{user_id}", self.id), &[])
             .await?;
         u.requester = self.requester.clone();
         Ok(u)
@@ -721,9 +718,7 @@ impl Account {
     ///
     /// # Canvas API
     /// `GET /api/v1/accounts/:id/courses`
-    pub fn get_courses(
-        &self,
-    ) -> PageStream<crate::resources::course::Course> {
+    pub fn get_courses(&self) -> PageStream<crate::resources::course::Course> {
         PageStream::new_with_injector(
             Arc::clone(self.req()),
             &format!("accounts/{}/courses", self.id),
@@ -771,7 +766,10 @@ impl Account {
     ///
     /// # Canvas API
     /// `POST /api/v1/accounts/:id/group_categories`
-    pub async fn create_group_category(&self, params: GroupCategoryParams) -> Result<GroupCategory> {
+    pub async fn create_group_category(
+        &self,
+        params: GroupCategoryParams,
+    ) -> Result<GroupCategory> {
         let form = wrap_params("group_category", &params);
         let mut gc: GroupCategory = self
             .req()

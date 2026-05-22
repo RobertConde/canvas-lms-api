@@ -237,10 +237,7 @@ impl DiscussionTopic {
         let prefix = self.parent_prefix()?;
         let _ = forced;
         self.req()
-            .delete_void(&format!(
-                "{prefix}/discussion_topics/{}/read_all",
-                self.id
-            ))
+            .delete_void(&format!("{prefix}/discussion_topics/{}/read_all", self.id))
             .await
     }
 

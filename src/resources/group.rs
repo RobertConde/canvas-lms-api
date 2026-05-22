@@ -4,13 +4,8 @@ use crate::{
     pagination::PageStream,
     params::wrap_params,
     resources::{
-        collaboration::Collaboration,
-        discussion_topic::DiscussionTopic,
-        file::File,
-        folder::Folder,
-        page::Page,
-        progress::Progress,
-        user::User,
+        collaboration::Collaboration, discussion_topic::DiscussionTopic, file::File,
+        folder::Folder, page::Page, progress::Progress, user::User,
     },
 };
 use serde::{Deserialize, Serialize};
@@ -104,9 +99,7 @@ impl Group {
     /// # Canvas API
     /// `DELETE /api/v1/groups/:id`
     pub async fn delete(&self) -> Result<()> {
-        self.req()
-            .delete_void(&format!("groups/{}", self.id))
-            .await
+        self.req().delete_void(&format!("groups/{}", self.id)).await
     }
 
     /// Stream all users in this group.
@@ -509,10 +502,7 @@ impl GroupMembership {
         let form = wrap_params("membership", &params);
         let mut m: GroupMembership = self
             .req()
-            .put(
-                &format!("groups/{group_id}/memberships/{}", self.id),
-                &form,
-            )
+            .put(&format!("groups/{group_id}/memberships/{}", self.id), &form)
             .await?;
         m.requester = self.requester.clone();
         m.group_id = self.group_id;

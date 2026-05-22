@@ -31,7 +31,10 @@ impl Progress {
     /// # Canvas API
     /// `GET /api/v1/progress/:id`
     pub async fn query(&self) -> Result<Progress> {
-        let mut p: Progress = self.req().get(&format!("progress/{}", self.id), &[]).await?;
+        let mut p: Progress = self
+            .req()
+            .get(&format!("progress/{}", self.id), &[])
+            .await?;
         p.requester = self.requester.clone();
         Ok(p)
     }

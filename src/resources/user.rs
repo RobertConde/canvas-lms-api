@@ -4,11 +4,8 @@ use crate::{
     pagination::PageStream,
     params::wrap_params,
     resources::{
-        communication_channel::CommunicationChannel,
-        course::Course,
-        enrollment::Enrollment,
-        file::File,
-        folder::Folder,
+        communication_channel::CommunicationChannel, course::Course, enrollment::Enrollment,
+        file::File, folder::Folder,
     },
 };
 
@@ -192,10 +189,7 @@ impl User {
     pub async fn add_observee(&self, observee_id: u64) -> Result<User> {
         let mut u: User = self
             .req()
-            .put(
-                &format!("users/{}/observees/{observee_id}", self.id),
-                &[],
-            )
+            .put(&format!("users/{}/observees/{observee_id}", self.id), &[])
             .await?;
         self.propagate(&mut u);
         Ok(u)
@@ -208,10 +202,7 @@ impl User {
     pub async fn remove_observee(&self, observee_id: u64) -> Result<User> {
         let mut u: User = self
             .req()
-            .delete(
-                &format!("users/{}/observees/{observee_id}", self.id),
-                &[],
-            )
+            .delete(&format!("users/{}/observees/{observee_id}", self.id), &[])
             .await?;
         self.propagate(&mut u);
         Ok(u)
@@ -224,10 +215,7 @@ impl User {
     pub async fn show_observee(&self, observee_id: u64) -> Result<User> {
         let mut u: User = self
             .req()
-            .get(
-                &format!("users/{}/observees/{observee_id}", self.id),
-                &[],
-            )
+            .get(&format!("users/{}/observees/{observee_id}", self.id), &[])
             .await?;
         self.propagate(&mut u);
         Ok(u)
@@ -261,10 +249,7 @@ impl User {
     /// `GET /api/v1/users/:id/colors/:asset_string`
     pub async fn get_color(&self, asset_string: &str) -> Result<serde_json::Value> {
         self.req()
-            .get(
-                &format!("users/{}/colors/{asset_string}", self.id),
-                &[],
-            )
+            .get(&format!("users/{}/colors/{asset_string}", self.id), &[])
             .await
     }
 
@@ -279,10 +264,7 @@ impl User {
     ) -> Result<serde_json::Value> {
         let params = vec![("hexcode".to_string(), hexcode.to_string())];
         self.req()
-            .put(
-                &format!("users/{}/colors/{asset_string}", self.id),
-                &params,
-            )
+            .put(&format!("users/{}/colors/{asset_string}", self.id), &params)
             .await
     }
 
@@ -380,10 +362,7 @@ impl User {
     ///
     /// # Canvas API
     /// `PUT /api/v1/users/:id/settings`
-    pub async fn update_settings(
-        &self,
-        params: &[(String, String)],
-    ) -> Result<serde_json::Value> {
+    pub async fn update_settings(&self, params: &[(String, String)]) -> Result<serde_json::Value> {
         self.req()
             .put(&format!("users/{}/settings", self.id), params)
             .await

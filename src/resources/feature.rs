@@ -32,12 +32,7 @@ pub struct FeatureFlag {
 
 impl FeatureFlag {
     fn flag_path(&self) -> String {
-        let ctx = self
-            .context_type
-            .as_deref()
-            .unwrap_or("")
-            .to_lowercase()
-            + "s";
+        let ctx = self.context_type.as_deref().unwrap_or("").to_lowercase() + "s";
         let ctx_id = self.context_id.unwrap_or_default();
         let feature = self.feature.as_deref().unwrap_or("");
         format!("{ctx}/{ctx_id}/features/flags/{feature}")

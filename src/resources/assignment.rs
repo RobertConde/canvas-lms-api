@@ -288,10 +288,7 @@ impl Assignment {
         let mut o: AssignmentOverride = self
             .req()
             .post(
-                &format!(
-                    "courses/{course_id}/assignments/{}/overrides",
-                    self.id
-                ),
+                &format!("courses/{course_id}/assignments/{}/overrides", self.id),
                 &form,
             )
             .await?;
@@ -332,10 +329,7 @@ impl Assignment {
     ///
     /// # Canvas API
     /// `POST /api/v1/courses/:course_id/assignments/:id/extensions`
-    pub async fn set_extensions(
-        &self,
-        params: &[(String, String)],
-    ) -> Result<serde_json::Value> {
+    pub async fn set_extensions(&self, params: &[(String, String)]) -> Result<serde_json::Value> {
         let course_id = self.course_id.ok_or_else(|| CanvasError::BadRequest {
             message: "Assignment has no course_id".to_string(),
             errors: vec![],
@@ -352,10 +346,7 @@ impl Assignment {
     ///
     /// # Canvas API
     /// `POST /api/v1/courses/:course_id/assignments/:id/submissions/update_grades`
-    pub async fn submissions_bulk_update(
-        &self,
-        params: &[(String, String)],
-    ) -> Result<Progress> {
+    pub async fn submissions_bulk_update(&self, params: &[(String, String)]) -> Result<Progress> {
         let course_id = self.course_id.ok_or_else(|| CanvasError::BadRequest {
             message: "Assignment has no course_id".to_string(),
             errors: vec![],

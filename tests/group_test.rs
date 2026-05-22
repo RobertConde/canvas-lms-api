@@ -95,11 +95,7 @@ async fn test_group_get_users() {
         .mount(&server)
         .await;
 
-    let users: Vec<_> = group
-        .get_users()
-        .collect_all()
-        .await
-        .unwrap();
+    let users: Vec<_> = group.get_users().collect_all().await.unwrap();
     assert_eq!(users.len(), 2);
     assert_eq!(users[0].id, 10);
 }
@@ -118,11 +114,7 @@ async fn test_group_get_memberships() {
         .mount(&server)
         .await;
 
-    let memberships: Vec<_> = group
-        .get_memberships()
-        .collect_all()
-        .await
-        .unwrap();
+    let memberships: Vec<_> = group.get_memberships().collect_all().await.unwrap();
     assert_eq!(memberships.len(), 2);
     assert_eq!(memberships[0].id, 20);
     assert_eq!(memberships[0].group_id, Some(1));
@@ -237,11 +229,7 @@ async fn test_group_get_files() {
         .mount(&server)
         .await;
 
-    let files: Vec<_> = group
-        .get_files()
-        .collect_all()
-        .await
-        .unwrap();
+    let files: Vec<_> = group.get_files().collect_all().await.unwrap();
     assert_eq!(files.len(), 1);
     assert_eq!(files[0].id, 100);
 }
@@ -259,11 +247,7 @@ async fn test_group_get_folders() {
         .mount(&server)
         .await;
 
-    let folders: Vec<_> = group
-        .get_folders()
-        .collect_all()
-        .await
-        .unwrap();
+    let folders: Vec<_> = group.get_folders().collect_all().await.unwrap();
     assert_eq!(folders.len(), 1);
     assert_eq!(folders[0].id, 200);
 }
@@ -300,11 +284,7 @@ async fn test_group_get_pages() {
         .mount(&server)
         .await;
 
-    let pages: Vec<_> = group
-        .get_pages()
-        .collect_all()
-        .await
-        .unwrap();
+    let pages: Vec<_> = group.get_pages().collect_all().await.unwrap();
     assert_eq!(pages.len(), 1);
     assert_eq!(pages[0].url.as_deref(), Some("welcome"));
     assert_eq!(pages[0].group_id, Some(1));
@@ -344,11 +324,7 @@ async fn test_group_get_discussion_topics() {
         .mount(&server)
         .await;
 
-    let topics: Vec<_> = group
-        .get_discussion_topics()
-        .collect_all()
-        .await
-        .unwrap();
+    let topics: Vec<_> = group.get_discussion_topics().collect_all().await.unwrap();
     assert_eq!(topics.len(), 1);
     assert_eq!(topics[0].id, 5);
     assert_eq!(topics[0].group_id, Some(1));
@@ -399,11 +375,7 @@ async fn test_group_membership_update() {
         .mount(&server)
         .await;
 
-    let memberships: Vec<_> = group
-        .get_memberships()
-        .collect_all()
-        .await
-        .unwrap();
+    let memberships: Vec<_> = group.get_memberships().collect_all().await.unwrap();
     let m = &memberships[0];
     let updated = m
         .update(UpdateMembershipParams {
@@ -434,11 +406,7 @@ async fn test_group_membership_remove_self() {
         .mount(&server)
         .await;
 
-    let memberships: Vec<_> = group
-        .get_memberships()
-        .collect_all()
-        .await
-        .unwrap();
+    let memberships: Vec<_> = group.get_memberships().collect_all().await.unwrap();
     memberships[0].remove_self().await.unwrap();
 }
 
@@ -464,11 +432,7 @@ async fn test_course_get_group_categories() {
 
     let canvas = Canvas::new(&server.uri(), "test-token").unwrap();
     let course = canvas.get_course(1).await.unwrap();
-    let categories: Vec<_> = course
-        .get_group_categories()
-        .collect_all()
-        .await
-        .unwrap();
+    let categories: Vec<_> = course.get_group_categories().collect_all().await.unwrap();
     assert_eq!(categories.len(), 2);
     assert_eq!(categories[0].id, 10);
 }
@@ -512,8 +476,7 @@ async fn test_group_category_update() {
     Mock::given(method("GET"))
         .and(path("/api/v1/courses/1/group_categories"))
         .respond_with(
-            ResponseTemplate::new(200)
-                .set_body_json(serde_json::json!([group_category_json(10)])),
+            ResponseTemplate::new(200).set_body_json(serde_json::json!([group_category_json(10)])),
         )
         .mount(&server)
         .await;
@@ -528,11 +491,7 @@ async fn test_group_category_update() {
 
     let canvas = Canvas::new(&server.uri(), "test-token").unwrap();
     let course = canvas.get_course(1).await.unwrap();
-    let categories: Vec<_> = course
-        .get_group_categories()
-        .collect_all()
-        .await
-        .unwrap();
+    let categories: Vec<_> = course.get_group_categories().collect_all().await.unwrap();
     let updated = categories[0]
         .update(GroupCategoryParams {
             name: Some("Updated Category".to_string()),
@@ -555,8 +514,7 @@ async fn test_group_category_delete() {
     Mock::given(method("GET"))
         .and(path("/api/v1/courses/1/group_categories"))
         .respond_with(
-            ResponseTemplate::new(200)
-                .set_body_json(serde_json::json!([group_category_json(10)])),
+            ResponseTemplate::new(200).set_body_json(serde_json::json!([group_category_json(10)])),
         )
         .mount(&server)
         .await;
@@ -568,11 +526,7 @@ async fn test_group_category_delete() {
 
     let canvas = Canvas::new(&server.uri(), "test-token").unwrap();
     let course = canvas.get_course(1).await.unwrap();
-    let categories: Vec<_> = course
-        .get_group_categories()
-        .collect_all()
-        .await
-        .unwrap();
+    let categories: Vec<_> = course.get_group_categories().collect_all().await.unwrap();
     categories[0].delete().await.unwrap();
 }
 
@@ -588,32 +542,23 @@ async fn test_group_category_get_groups() {
     Mock::given(method("GET"))
         .and(path("/api/v1/courses/1/group_categories"))
         .respond_with(
-            ResponseTemplate::new(200)
-                .set_body_json(serde_json::json!([group_category_json(10)])),
+            ResponseTemplate::new(200).set_body_json(serde_json::json!([group_category_json(10)])),
         )
         .mount(&server)
         .await;
     Mock::given(method("GET"))
         .and(path("/api/v1/group_categories/10/groups"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
-            group_json(1),
-            group_json(2)
-        ])))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_json(serde_json::json!([group_json(1), group_json(2)])),
+        )
         .mount(&server)
         .await;
 
     let canvas = Canvas::new(&server.uri(), "test-token").unwrap();
     let course = canvas.get_course(1).await.unwrap();
-    let categories: Vec<_> = course
-        .get_group_categories()
-        .collect_all()
-        .await
-        .unwrap();
-    let groups: Vec<_> = categories[0]
-        .get_groups()
-        .collect_all()
-        .await
-        .unwrap();
+    let categories: Vec<_> = course.get_group_categories().collect_all().await.unwrap();
+    let groups: Vec<_> = categories[0].get_groups().collect_all().await.unwrap();
     assert_eq!(groups.len(), 2);
 }
 
@@ -633,9 +578,7 @@ async fn test_group_create_page() {
         .await;
 
     let page = group
-        .create_page(&[
-            ("wiki_page[title]".to_string(), "New Page".to_string()),
-        ])
+        .create_page(&[("wiki_page[title]".to_string(), "New Page".to_string())])
         .await
         .unwrap();
     assert_eq!(page.title.as_deref(), Some("New Page"));
@@ -658,9 +601,7 @@ async fn test_group_create_discussion_topic() {
         .await;
 
     let topic = group
-        .create_discussion_topic(&[
-            ("title".to_string(), "New Discussion".to_string()),
-        ])
+        .create_discussion_topic(&[("title".to_string(), "New Discussion".to_string())])
         .await
         .unwrap();
     assert_eq!(topic.id, 10);
@@ -681,11 +622,7 @@ async fn test_group_get_tabs() {
         .mount(&server)
         .await;
 
-    let tabs: Vec<_> = group
-        .get_tabs()
-        .collect_all()
-        .await
-        .unwrap();
+    let tabs: Vec<_> = group.get_tabs().collect_all().await.unwrap();
     assert_eq!(tabs.len(), 2);
     assert_eq!(tabs[0]["id"], "home");
 }
@@ -703,11 +640,7 @@ async fn test_group_get_content_migrations() {
         .mount(&server)
         .await;
 
-    let migrations: Vec<_> = group
-        .get_content_migrations()
-        .collect_all()
-        .await
-        .unwrap();
+    let migrations: Vec<_> = group.get_content_migrations().collect_all().await.unwrap();
     assert_eq!(migrations.len(), 1);
     assert_eq!(migrations[0]["migration_type"], "common_cartridge_importer");
 }
@@ -725,11 +658,7 @@ async fn test_group_get_content_exports() {
         .mount(&server)
         .await;
 
-    let exports: Vec<_> = group
-        .get_content_exports()
-        .collect_all()
-        .await
-        .unwrap();
+    let exports: Vec<_> = group.get_content_exports().collect_all().await.unwrap();
     assert_eq!(exports.len(), 1);
     assert_eq!(exports[0]["export_type"], "common_cartridge");
 }
@@ -764,11 +693,7 @@ async fn test_group_resolve_path() {
         .mount(&server)
         .await;
 
-    let folders: Vec<_> = group
-        .resolve_path(None)
-        .collect_all()
-        .await
-        .unwrap();
+    let folders: Vec<_> = group.resolve_path(None).collect_all().await.unwrap();
     assert_eq!(folders.len(), 1);
     assert_eq!(folders[0].name.as_deref(), Some("course files"));
 }
@@ -800,16 +725,8 @@ async fn test_group_category_get_users() {
 
     let canvas = Canvas::new(&server.uri(), "test-token").unwrap();
     let course = canvas.get_course(1).await.unwrap();
-    let categories: Vec<_> = course
-        .get_group_categories()
-        .collect_all()
-        .await
-        .unwrap();
-    let users: Vec<_> = categories[0]
-        .get_users()
-        .collect_all()
-        .await
-        .unwrap();
+    let categories: Vec<_> = course.get_group_categories().collect_all().await.unwrap();
+    let users: Vec<_> = categories[0].get_users().collect_all().await.unwrap();
     assert_eq!(users.len(), 2);
     assert_eq!(users[0].id, 42);
 }
@@ -840,11 +757,7 @@ async fn test_group_category_create_group() {
 
     let canvas = Canvas::new(&server.uri(), "test-token").unwrap();
     let course = canvas.get_course(1).await.unwrap();
-    let categories: Vec<_> = course
-        .get_group_categories()
-        .collect_all()
-        .await
-        .unwrap();
+    let categories: Vec<_> = course.get_group_categories().collect_all().await.unwrap();
     let group = categories[0].create_group("New Group").await.unwrap();
     assert_eq!(group.id, 20);
 }
@@ -866,7 +779,9 @@ async fn test_group_category_assign_members() {
         .mount(&server)
         .await;
     Mock::given(method("POST"))
-        .and(path("/api/v1/group_categories/10/assign_unassigned_members"))
+        .and(path(
+            "/api/v1/group_categories/10/assign_unassigned_members",
+        ))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
             "id": 5,
             "workflow_state": "queued",
@@ -877,11 +792,7 @@ async fn test_group_category_assign_members() {
 
     let canvas = Canvas::new(&server.uri(), "test-token").unwrap();
     let course = canvas.get_course(1).await.unwrap();
-    let categories: Vec<_> = course
-        .get_group_categories()
-        .collect_all()
-        .await
-        .unwrap();
+    let categories: Vec<_> = course.get_group_categories().collect_all().await.unwrap();
     let progress = categories[0].assign_members().await.unwrap();
     assert_eq!(progress.id, 5);
     assert_eq!(progress.workflow_state.as_deref(), Some("queued"));

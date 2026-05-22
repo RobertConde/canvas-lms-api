@@ -105,10 +105,7 @@ impl Submission {
     ///
     /// # Canvas API
     /// `POST /api/v1/courses/:course_id/assignments/:assignment_id/submissions/:user_id/peer_reviews`
-    pub async fn create_submission_peer_review(
-        &self,
-        user_id: u64,
-    ) -> Result<serde_json::Value> {
+    pub async fn create_submission_peer_review(&self, user_id: u64) -> Result<serde_json::Value> {
         let prefix = self.course_assignment_user_prefix()?;
         let params = vec![("user_id".to_string(), user_id.to_string())];
         self.req()
@@ -120,10 +117,7 @@ impl Submission {
     ///
     /// # Canvas API
     /// `DELETE /api/v1/courses/:course_id/assignments/:assignment_id/submissions/:user_id/peer_reviews`
-    pub async fn delete_submission_peer_review(
-        &self,
-        user_id: u64,
-    ) -> Result<serde_json::Value> {
+    pub async fn delete_submission_peer_review(&self, user_id: u64) -> Result<serde_json::Value> {
         let prefix = self.course_assignment_user_prefix()?;
         let params = vec![("user_id".to_string(), user_id.to_string())];
         self.req()
@@ -136,9 +130,7 @@ impl Submission {
     /// # Canvas API
     /// `GET /api/v1/courses/:course_id/assignments/:assignment_id/submissions/:user_id/peer_reviews`
     pub fn get_submission_peer_reviews(&self) -> PageStream<serde_json::Value> {
-        let prefix = self
-            .course_assignment_user_prefix()
-            .unwrap_or_default();
+        let prefix = self.course_assignment_user_prefix().unwrap_or_default();
         PageStream::new(
             Arc::clone(self.req()),
             &format!("{prefix}/peer_reviews"),

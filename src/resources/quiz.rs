@@ -245,10 +245,7 @@ impl Quiz {
     ///
     /// # Canvas API
     /// `POST /api/v1/courses/:course_id/quizzes/:id/extensions`
-    pub async fn set_extensions(
-        &self,
-        params: &[(String, String)],
-    ) -> Result<serde_json::Value> {
+    pub async fn set_extensions(&self, params: &[(String, String)]) -> Result<serde_json::Value> {
         let course_id = self.course_id_or_err()?;
         self.req()
             .post(
@@ -344,10 +341,7 @@ impl QuizSubmission {
         let attempt = self.attempt.unwrap_or(1).to_string();
         let params = vec![
             ("attempt".to_string(), attempt),
-            (
-                "validation_token".to_string(),
-                validation_token.to_string(),
-            ),
+            ("validation_token".to_string(), validation_token.to_string()),
         ];
         let resp: serde_json::Value = self
             .req()

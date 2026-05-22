@@ -1206,10 +1206,7 @@ impl Course {
     ///
     /// # Canvas API
     /// `PUT /api/v1/courses/:id/settings`
-    pub async fn update_settings(
-        &self,
-        params: &[(String, String)],
-    ) -> Result<serde_json::Value> {
+    pub async fn update_settings(&self, params: &[(String, String)]) -> Result<serde_json::Value> {
         self.req()
             .put(&format!("courses/{}/settings", self.id), params)
             .await
@@ -1229,9 +1226,7 @@ impl Course {
     ///
     /// # Canvas API
     /// `GET /api/v1/courses/:id/students/submissions`
-    pub fn get_multiple_submissions(
-        &self,
-    ) -> PageStream<crate::resources::submission::Submission> {
+    pub fn get_multiple_submissions(&self) -> PageStream<crate::resources::submission::Submission> {
         let course_id = self.id;
         PageStream::new_with_injector(
             Arc::clone(self.req()),
@@ -1256,13 +1251,12 @@ impl Course {
     ) -> Result<crate::resources::enrollment::Enrollment> {
         let params = vec![
             ("enrollment[user_id]".to_string(), user_id.to_string()),
-            (
-                "enrollment[type]".to_string(),
-                enrollment_type.to_string(),
-            ),
+            ("enrollment[type]".to_string(), enrollment_type.to_string()),
         ];
-        let mut e: crate::resources::enrollment::Enrollment =
-            self.req().post(&format!("courses/{}/enrollments", self.id), &params).await?;
+        let mut e: crate::resources::enrollment::Enrollment = self
+            .req()
+            .post(&format!("courses/{}/enrollments", self.id), &params)
+            .await?;
         e.requester = Some(Arc::clone(self.req()));
         Ok(e)
     }

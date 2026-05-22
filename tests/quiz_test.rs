@@ -159,11 +159,7 @@ async fn test_quiz_get_questions() {
         .mount(&server)
         .await;
 
-    let questions: Vec<_> = quiz
-        .get_questions()
-        .collect_all()
-        .await
-        .unwrap();
+    let questions: Vec<_> = quiz.get_questions().collect_all().await.unwrap();
     assert_eq!(questions.len(), 2);
     assert_eq!(questions[0].id, 10);
     assert_eq!(questions[0].course_id, Some(1));
@@ -216,11 +212,7 @@ async fn test_quiz_get_submissions() {
         .mount(&server)
         .await;
 
-    let subs: Vec<_> = quiz
-        .get_submissions()
-        .collect_all()
-        .await
-        .unwrap();
+    let subs: Vec<_> = quiz.get_submissions().collect_all().await.unwrap();
     assert_eq!(subs.len(), 2);
     assert_eq!(subs[0].id, 20);
     assert_eq!(subs[0].course_id, Some(1));
@@ -364,7 +356,10 @@ async fn test_quiz_set_extensions() {
     let result = quiz
         .set_extensions(&[
             ("quiz_extensions[][user_id]".to_string(), "10".to_string()),
-            ("quiz_extensions[][extra_attempts]".to_string(), "1".to_string()),
+            (
+                "quiz_extensions[][extra_attempts]".to_string(),
+                "1".to_string(),
+            ),
         ])
         .await
         .unwrap();

@@ -24,7 +24,9 @@ fn entry_json(id: u64, user_id: u64) -> serde_json::Value {
     })
 }
 
-async fn setup(server: &MockServer) -> canvas_lms_api::resources::discussion_topic::DiscussionTopic {
+async fn setup(
+    server: &MockServer,
+) -> canvas_lms_api::resources::discussion_topic::DiscussionTopic {
     Mock::given(method("GET"))
         .and(path("/api/v1/courses/1"))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({"id": 1})))
@@ -132,11 +134,7 @@ async fn test_discussion_topic_get_topic_entries() {
         .mount(&server)
         .await;
 
-    let entries: Vec<_> = topic
-        .get_topic_entries()
-        .collect_all()
-        .await
-        .unwrap();
+    let entries: Vec<_> = topic.get_topic_entries().collect_all().await.unwrap();
     assert_eq!(entries.len(), 2);
     assert_eq!(entries[0].id, 1);
     assert_eq!(entries[0].user_id, Some(42));
@@ -150,13 +148,11 @@ async fn test_discussion_topic_get_entries() {
 
     Mock::given(method("GET"))
         .and(path("/api/v1/courses/1/discussion_topics/1/entry_list"))
-        .respond_with(
-            ResponseTemplate::new(200).set_body_json(serde_json::json!([
-                entry_json(1, 42),
-                entry_json(2, 43),
-                {"id": 3, "user_id": 44, "message": "Lower level entry"}
-            ])),
-        )
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            entry_json(1, 42),
+            entry_json(2, 43),
+            {"id": 3, "user_id": 44, "message": "Lower level entry"}
+        ])))
         .mount(&server)
         .await;
 
@@ -319,7 +315,9 @@ async fn test_entry_post_reply() {
     let entry = setup_with_entry(&server).await;
 
     Mock::given(method("POST"))
-        .and(path("/api/v1/courses/1/discussion_topics/1/entries/1/replies"))
+        .and(path(
+            "/api/v1/courses/1/discussion_topics/1/entries/1/replies",
+        ))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
             "id": 5,
             "user_id": 99,
@@ -339,7 +337,9 @@ async fn test_entry_get_replies() {
     let entry = setup_with_entry(&server).await;
 
     Mock::given(method("GET"))
-        .and(path("/api/v1/courses/1/discussion_topics/1/entries/1/replies"))
+        .and(path(
+            "/api/v1/courses/1/discussion_topics/1/entries/1/replies",
+        ))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
             {"id": 5, "user_id": 99, "message": "Reply message 1"},
             {"id": 6, "user_id": 100, "message": "Reply message 2"}
@@ -347,11 +347,7 @@ async fn test_entry_get_replies() {
         .mount(&server)
         .await;
 
-    let replies: Vec<_> = entry
-        .get_replies()
-        .collect_all()
-        .await
-        .unwrap();
+    let replies: Vec<_> = entry.get_replies().collect_all().await.unwrap();
     assert_eq!(replies.len(), 2);
     assert_eq!(replies[0].id, 5);
     assert_eq!(replies[0].message.as_deref(), Some("Reply message 1"));
@@ -391,7 +387,9 @@ async fn test_entry_rate_valid() {
     let entry = setup_with_entry(&server).await;
 
     Mock::given(method("POST"))
-        .and(path("/api/v1/courses/1/discussion_topics/1/entries/1/rating"))
+        .and(path(
+            "/api/v1/courses/1/discussion_topics/1/entries/1/rating",
+        ))
         .respond_with(ResponseTemplate::new(204))
         .mount(&server)
         .await;

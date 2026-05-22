@@ -91,12 +91,7 @@ async fn test_page_get_revisions() {
         .mount(&server)
         .await;
 
-    let revisions: Vec<_> = page
-        .get_revisions()
-        .unwrap()
-        .collect_all()
-        .await
-        .unwrap();
+    let revisions: Vec<_> = page.get_revisions().unwrap().collect_all().await.unwrap();
     assert_eq!(revisions.len(), 2);
     assert_eq!(revisions[0].revision_id, Some(1));
 }
@@ -108,14 +103,12 @@ async fn test_page_show_latest_revision() {
 
     Mock::given(method("GET"))
         .and(path("/api/v1/courses/1/pages/welcome/revisions/latest"))
-        .respond_with(
-            ResponseTemplate::new(200).set_body_json(serde_json::json!({
-                "revision_id": 5,
-                "latest": true,
-                "url": "welcome",
-                "title": "Welcome"
-            })),
-        )
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "revision_id": 5,
+            "latest": true,
+            "url": "welcome",
+            "title": "Welcome"
+        })))
         .mount(&server)
         .await;
 

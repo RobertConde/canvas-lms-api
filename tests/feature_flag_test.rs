@@ -23,18 +23,22 @@ async fn test_feature_flag_delete_course() {
         .await;
     Mock::given(method("GET"))
         .and(path("/api/v1/courses/1/features/flags/new_gradebook"))
-        .respond_with(
-            ResponseTemplate::new(200)
-                .set_body_json(flag_json("Course", 1, "new_gradebook", "on")),
-        )
+        .respond_with(ResponseTemplate::new(200).set_body_json(flag_json(
+            "Course",
+            1,
+            "new_gradebook",
+            "on",
+        )))
         .mount(&server)
         .await;
     Mock::given(method("DELETE"))
         .and(path("/api/v1/courses/1/features/flags/new_gradebook"))
-        .respond_with(
-            ResponseTemplate::new(200)
-                .set_body_json(flag_json("Course", 1, "new_gradebook", "off")),
-        )
+        .respond_with(ResponseTemplate::new(200).set_body_json(flag_json(
+            "Course",
+            1,
+            "new_gradebook",
+            "off",
+        )))
         .mount(&server)
         .await;
 
@@ -58,18 +62,22 @@ async fn test_feature_flag_set_course() {
         .await;
     Mock::given(method("GET"))
         .and(path("/api/v1/courses/1/features/flags/new_gradebook"))
-        .respond_with(
-            ResponseTemplate::new(200)
-                .set_body_json(flag_json("Course", 1, "new_gradebook", "off")),
-        )
+        .respond_with(ResponseTemplate::new(200).set_body_json(flag_json(
+            "Course",
+            1,
+            "new_gradebook",
+            "off",
+        )))
         .mount(&server)
         .await;
     Mock::given(method("PUT"))
         .and(path("/api/v1/courses/1/features/flags/new_gradebook"))
-        .respond_with(
-            ResponseTemplate::new(200)
-                .set_body_json(flag_json("Course", 1, "new_gradebook", "on")),
-        )
+        .respond_with(ResponseTemplate::new(200).set_body_json(flag_json(
+            "Course",
+            1,
+            "new_gradebook",
+            "on",
+        )))
         .mount(&server)
         .await;
 
@@ -93,18 +101,22 @@ async fn test_feature_flag_delete_account() {
         .await;
     Mock::given(method("GET"))
         .and(path("/api/v1/accounts/1/features/flags/new_gradebook"))
-        .respond_with(
-            ResponseTemplate::new(200)
-                .set_body_json(flag_json("Account", 1, "new_gradebook", "on")),
-        )
+        .respond_with(ResponseTemplate::new(200).set_body_json(flag_json(
+            "Account",
+            1,
+            "new_gradebook",
+            "on",
+        )))
         .mount(&server)
         .await;
     Mock::given(method("DELETE"))
         .and(path("/api/v1/accounts/1/features/flags/new_gradebook"))
-        .respond_with(
-            ResponseTemplate::new(200)
-                .set_body_json(flag_json("Account", 1, "new_gradebook", "off")),
-        )
+        .respond_with(ResponseTemplate::new(200).set_body_json(flag_json(
+            "Account",
+            1,
+            "new_gradebook",
+            "off",
+        )))
         .mount(&server)
         .await;
 
@@ -126,18 +138,22 @@ async fn test_feature_flag_set_account() {
         .await;
     Mock::given(method("GET"))
         .and(path("/api/v1/accounts/1/features/flags/new_gradebook"))
-        .respond_with(
-            ResponseTemplate::new(200)
-                .set_body_json(flag_json("Account", 1, "new_gradebook", "off")),
-        )
+        .respond_with(ResponseTemplate::new(200).set_body_json(flag_json(
+            "Account",
+            1,
+            "new_gradebook",
+            "off",
+        )))
         .mount(&server)
         .await;
     Mock::given(method("PUT"))
         .and(path("/api/v1/accounts/1/features/flags/new_gradebook"))
-        .respond_with(
-            ResponseTemplate::new(200)
-                .set_body_json(flag_json("Account", 1, "new_gradebook", "allowed")),
-        )
+        .respond_with(ResponseTemplate::new(200).set_body_json(flag_json(
+            "Account",
+            1,
+            "new_gradebook",
+            "allowed",
+        )))
         .mount(&server)
         .await;
 

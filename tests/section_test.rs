@@ -112,18 +112,14 @@ async fn test_section_get_enrollments() {
 
     Mock::given(method("GET"))
         .and(path("/api/v1/sections/5/enrollments"))
-        .respond_with(
-            ResponseTemplate::new(200)
-                .set_body_json(serde_json::json!([enrollment_json(20, 1), enrollment_json(21, 1)])),
-        )
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            enrollment_json(20, 1),
+            enrollment_json(21, 1)
+        ])))
         .mount(&server)
         .await;
 
-    let enrollments: Vec<_> = section
-        .get_enrollments()
-        .collect_all()
-        .await
-        .unwrap();
+    let enrollments: Vec<_> = section.get_enrollments().collect_all().await.unwrap();
     assert_eq!(enrollments.len(), 2);
     assert_eq!(enrollments[0].id, 20);
 }

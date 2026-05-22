@@ -57,11 +57,7 @@ async fn test_account_get_subaccounts() {
         .mount(&server)
         .await;
 
-    let subs: Vec<_> = account
-        .get_subaccounts()
-        .collect_all()
-        .await
-        .unwrap();
+    let subs: Vec<_> = account.get_subaccounts().collect_all().await.unwrap();
     assert_eq!(subs.len(), 2);
     assert_eq!(subs[0].id, 10);
 }
@@ -99,11 +95,7 @@ async fn test_account_get_users() {
         .mount(&server)
         .await;
 
-    let users: Vec<_> = account
-        .get_users()
-        .collect_all()
-        .await
-        .unwrap();
+    let users: Vec<_> = account.get_users().collect_all().await.unwrap();
     assert_eq!(users.len(), 2);
     assert_eq!(users[0].id, 42);
 }
@@ -140,11 +132,7 @@ async fn test_account_get_courses() {
         .mount(&server)
         .await;
 
-    let courses: Vec<_> = account
-        .get_courses()
-        .collect_all()
-        .await
-        .unwrap();
+    let courses: Vec<_> = account.get_courses().collect_all().await.unwrap();
     assert_eq!(courses.len(), 2);
     assert_eq!(courses[0].id, 1);
 }
@@ -162,11 +150,7 @@ async fn test_account_get_groups() {
         .mount(&server)
         .await;
 
-    let groups: Vec<_> = account
-        .get_groups()
-        .collect_all()
-        .await
-        .unwrap();
+    let groups: Vec<_> = account.get_groups().collect_all().await.unwrap();
     assert_eq!(groups.len(), 1);
     assert_eq!(groups[0].id, 5);
 }
@@ -184,11 +168,7 @@ async fn test_account_get_group_categories() {
         .mount(&server)
         .await;
 
-    let categories: Vec<_> = account
-        .get_group_categories()
-        .collect_all()
-        .await
-        .unwrap();
+    let categories: Vec<_> = account.get_group_categories().collect_all().await.unwrap();
     assert_eq!(categories.len(), 1);
     assert_eq!(categories[0].id, 10);
 }
@@ -230,11 +210,7 @@ async fn test_account_get_admins() {
         .mount(&server)
         .await;
 
-    let admins: Vec<_> = account
-        .get_admins()
-        .collect_all()
-        .await
-        .unwrap();
+    let admins: Vec<_> = account.get_admins().collect_all().await.unwrap();
     assert_eq!(admins.len(), 1);
 }
 
@@ -297,7 +273,10 @@ async fn test_account_create_user() {
     let user = account
         .create_user(&[
             ("user[name]".to_string(), "New Student".to_string()),
-            ("pseudonym[unique_id]".to_string(), "student@example.com".to_string()),
+            (
+                "pseudonym[unique_id]".to_string(),
+                "student@example.com".to_string(),
+            ),
         ])
         .await
         .unwrap();
@@ -311,7 +290,9 @@ async fn test_account_get_reports() {
     let account = setup(&server).await;
 
     Mock::given(method("GET"))
-        .and(path("/api/v1/accounts/1/reports/student_assignment_outcome_map_csv"))
+        .and(path(
+            "/api/v1/accounts/1/reports/student_assignment_outcome_map_csv",
+        ))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
             {"id": 1, "report": "student_assignment_outcome_map_csv", "status": "complete"}
         ])))
@@ -333,7 +314,9 @@ async fn test_account_create_report() {
     let account = setup(&server).await;
 
     Mock::given(method("POST"))
-        .and(path("/api/v1/accounts/1/reports/student_assignment_outcome_map_csv"))
+        .and(path(
+            "/api/v1/accounts/1/reports/student_assignment_outcome_map_csv",
+        ))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
             "id": 2,
             "report": "student_assignment_outcome_map_csv",

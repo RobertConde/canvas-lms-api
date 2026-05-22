@@ -129,10 +129,7 @@ impl Module {
         let course_id = self.course_id_or_err()?;
         let mut m: Module = self
             .req()
-            .delete(
-                &format!("courses/{course_id}/modules/{}", self.id),
-                &[],
-            )
+            .delete(&format!("courses/{course_id}/modules/{}", self.id), &[])
             .await?;
         self.propagate(&mut m);
         Ok(m)
@@ -184,10 +181,7 @@ impl Module {
         let mut item: ModuleItem = self
             .req()
             .get(
-                &format!(
-                    "courses/{course_id}/modules/{}/items/{item_id}",
-                    self.id
-                ),
+                &format!("courses/{course_id}/modules/{}/items/{item_id}", self.id),
                 &[],
             )
             .await?;

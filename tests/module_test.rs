@@ -47,9 +47,7 @@ async fn setup(server: &MockServer) -> canvas_lms_api::resources::module::Module
     course.get_module(1).await.unwrap()
 }
 
-async fn setup_with_item(
-    server: &MockServer,
-) -> canvas_lms_api::resources::module::ModuleItem {
+async fn setup_with_item(server: &MockServer) -> canvas_lms_api::resources::module::ModuleItem {
     let module = setup(server).await;
 
     Mock::given(method("GET"))
@@ -133,11 +131,7 @@ async fn test_module_get_module_items() {
         .mount(&server)
         .await;
 
-    let items: Vec<_> = module
-        .get_module_items()
-        .collect_all()
-        .await
-        .unwrap();
+    let items: Vec<_> = module.get_module_items().collect_all().await.unwrap();
     assert_eq!(items.len(), 2);
     assert_eq!(items[0].id, 5);
     assert_eq!(items[0].course_id, Some(1));

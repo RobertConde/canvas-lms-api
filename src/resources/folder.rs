@@ -128,10 +128,7 @@ impl Folder {
     /// # Canvas API
     /// `POST /api/v1/folders/:dest_folder_id/copy_file`
     pub async fn copy_file(&self, source_file_id: u64) -> Result<File> {
-        let params = vec![(
-            "source_file_id".to_string(),
-            source_file_id.to_string(),
-        )];
+        let params = vec![("source_file_id".to_string(), source_file_id.to_string())];
         let mut f: File = self
             .req()
             .post(&format!("folders/{}/copy_file", self.id), &params)

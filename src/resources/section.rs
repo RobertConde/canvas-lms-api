@@ -1,9 +1,4 @@
-use crate::{
-    error::Result,
-    http::Requester,
-    pagination::PageStream,
-    params::wrap_params,
-};
+use crate::{error::Result, http::Requester, pagination::PageStream, params::wrap_params};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -61,7 +56,10 @@ impl Section {
     /// `PUT /api/v1/sections/:id`
     pub async fn edit(&self, params: UpdateSectionParams) -> Result<Section> {
         let form = wrap_params("course_section", &params);
-        let mut s: Section = self.req().put(&format!("sections/{}", self.id), &form).await?;
+        let mut s: Section = self
+            .req()
+            .put(&format!("sections/{}", self.id), &form)
+            .await?;
         s.requester = self.requester.clone();
         Ok(s)
     }
@@ -142,10 +140,7 @@ impl Section {
     ///
     /// # Canvas API
     /// `GET /api/v1/sections/:course_section_id/assignments/:assignment_id/override`
-    pub async fn get_assignment_override(
-        &self,
-        assignment_id: u64,
-    ) -> Result<serde_json::Value> {
+    pub async fn get_assignment_override(&self, assignment_id: u64) -> Result<serde_json::Value> {
         self.req()
             .get(
                 &format!("sections/{}/assignments/{assignment_id}/override", self.id),
@@ -170,10 +165,7 @@ impl Section {
     ///
     /// # Canvas API
     /// `POST /api/v1/sections/:section_id/submissions/update_grades`
-    pub async fn submissions_bulk_update(
-        &self,
-        params: &[(String, String)],
-    ) -> Result<Progress> {
+    pub async fn submissions_bulk_update(&self, params: &[(String, String)]) -> Result<Progress> {
         let mut p: Progress = self
             .req()
             .post(

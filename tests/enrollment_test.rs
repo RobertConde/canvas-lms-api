@@ -21,15 +21,21 @@ async fn setup(server: &MockServer) -> canvas_lms_api::resources::enrollment::En
     Mock::given(method("GET"))
         .and(path("/api/v1/courses/1/enrollments"))
         .respond_with(
-            ResponseTemplate::new(200)
-                .set_body_json(serde_json::json!([enrollment_json(10, 1)])),
+            ResponseTemplate::new(200).set_body_json(serde_json::json!([enrollment_json(10, 1)])),
         )
         .mount(server)
         .await;
 
     let canvas = Canvas::new(&server.uri(), "test-token").unwrap();
     let course = canvas.get_course(1).await.unwrap();
-    course.get_enrollments().collect_all().await.unwrap().into_iter().next().unwrap()
+    course
+        .get_enrollments()
+        .collect_all()
+        .await
+        .unwrap()
+        .into_iter()
+        .next()
+        .unwrap()
 }
 
 #[tokio::test]
@@ -39,7 +45,9 @@ async fn test_enrollment_accept() {
 
     Mock::given(method("POST"))
         .and(path("/api/v1/courses/1/enrollments/10/accept"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({"success": true})))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_json(serde_json::json!({"success": true})),
+        )
         .mount(&server)
         .await;
 
@@ -54,7 +62,9 @@ async fn test_enrollment_reject() {
 
     Mock::given(method("POST"))
         .and(path("/api/v1/courses/1/enrollments/10/reject"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({"success": true})))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_json(serde_json::json!({"success": true})),
+        )
         .mount(&server)
         .await;
 
@@ -69,9 +79,7 @@ async fn test_enrollment_reactivate() {
 
     Mock::given(method("PUT"))
         .and(path("/api/v1/courses/1/enrollments/10/reactivate"))
-        .respond_with(
-            ResponseTemplate::new(200).set_body_json(enrollment_json(10, 1)),
-        )
+        .respond_with(ResponseTemplate::new(200).set_body_json(enrollment_json(10, 1)))
         .mount(&server)
         .await;
 
@@ -87,9 +95,7 @@ async fn test_enrollment_deactivate() {
     Mock::given(method("DELETE"))
         .and(path("/api/v1/courses/1/enrollments/10"))
         .and(query_param("task", "conclude"))
-        .respond_with(
-            ResponseTemplate::new(200).set_body_json(enrollment_json(10, 1)),
-        )
+        .respond_with(ResponseTemplate::new(200).set_body_json(enrollment_json(10, 1)))
         .mount(&server)
         .await;
 

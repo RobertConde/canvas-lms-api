@@ -39,11 +39,7 @@ async fn test_course_tab_update() {
     let canvas = Canvas::new(&server.uri(), "test-token").unwrap();
     let course = canvas.get_course(1).await.unwrap();
 
-    let tabs: Vec<_> = course
-        .get_tabs()
-        .collect_all()
-        .await
-        .unwrap();
+    let tabs: Vec<_> = course.get_tabs().collect_all().await.unwrap();
     assert_eq!(tabs.len(), 2);
     assert_eq!(tabs[1].course_id, Some(1));
 
@@ -70,19 +66,15 @@ async fn test_group_tab_update_fails() {
         .await;
     Mock::given(method("GET"))
         .and(path("/api/v1/courses/1/tabs"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
-            tab_json("home", 1)
-        ])))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_json(serde_json::json!([tab_json("home", 1)])),
+        )
         .mount(&server)
         .await;
 
     let canvas = Canvas::new(&server.uri(), "test-token").unwrap();
     let course = canvas.get_course(1).await.unwrap();
-    let mut tabs: Vec<_> = course
-        .get_tabs()
-        .collect_all()
-        .await
-        .unwrap();
+    let mut tabs: Vec<_> = course.get_tabs().collect_all().await.unwrap();
 
     // Clear course_id to simulate a group tab
     tabs[0].course_id = None;

@@ -1,4 +1,7 @@
-use canvas_lms_api::{resources::user::{EditUserParams, UserId}, Canvas};
+use canvas_lms_api::{
+    resources::user::{EditUserParams, UserId},
+    Canvas,
+};
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
@@ -107,11 +110,7 @@ async fn test_user_get_avatars() {
         .mount(&server)
         .await;
 
-    let avatars: Vec<_> = user
-        .get_avatars()
-        .collect_all()
-        .await
-        .unwrap();
+    let avatars: Vec<_> = user.get_avatars().collect_all().await.unwrap();
     assert_eq!(avatars.len(), 2);
 }
 
@@ -129,11 +128,7 @@ async fn test_user_get_page_views() {
         .mount(&server)
         .await;
 
-    let views: Vec<_> = user
-        .get_page_views()
-        .collect_all()
-        .await
-        .unwrap();
+    let views: Vec<_> = user.get_page_views().collect_all().await.unwrap();
     assert_eq!(views.len(), 2);
 }
 
@@ -144,18 +139,14 @@ async fn test_user_get_observees() {
 
     Mock::given(method("GET"))
         .and(path("/api/v1/users/42/observees"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
-            user_json(10),
-            user_json(11)
-        ])))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_json(serde_json::json!([user_json(10), user_json(11)])),
+        )
         .mount(&server)
         .await;
 
-    let observees: Vec<_> = user
-        .get_observees()
-        .collect_all()
-        .await
-        .unwrap();
+    let observees: Vec<_> = user.get_observees().collect_all().await.unwrap();
     assert_eq!(observees.len(), 2);
 }
 
@@ -211,17 +202,11 @@ async fn test_user_get_observers() {
 
     Mock::given(method("GET"))
         .and(path("/api/v1/users/42/observers"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
-            user_json(20)
-        ])))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([user_json(20)])))
         .mount(&server)
         .await;
 
-    let observers: Vec<_> = user
-        .get_observers()
-        .collect_all()
-        .await
-        .unwrap();
+    let observers: Vec<_> = user.get_observers().collect_all().await.unwrap();
     assert_eq!(observers.len(), 1);
     assert_eq!(observers[0].id, 20);
 }
@@ -293,11 +278,7 @@ async fn test_user_get_missing_submissions() {
         .mount(&server)
         .await;
 
-    let missing: Vec<_> = user
-        .get_missing_submissions()
-        .collect_all()
-        .await
-        .unwrap();
+    let missing: Vec<_> = user.get_missing_submissions().collect_all().await.unwrap();
     assert_eq!(missing.len(), 1);
 }
 
@@ -315,11 +296,7 @@ async fn test_user_get_files() {
         .mount(&server)
         .await;
 
-    let files: Vec<_> = user
-        .get_files()
-        .collect_all()
-        .await
-        .unwrap();
+    let files: Vec<_> = user.get_files().collect_all().await.unwrap();
     assert_eq!(files.len(), 1);
     assert_eq!(files[0].id, 100);
 }
@@ -338,11 +315,7 @@ async fn test_user_get_folders() {
         .mount(&server)
         .await;
 
-    let folders: Vec<_> = user
-        .get_folders()
-        .collect_all()
-        .await
-        .unwrap();
+    let folders: Vec<_> = user.get_folders().collect_all().await.unwrap();
     assert_eq!(folders.len(), 1);
     assert_eq!(folders[0].id, 200);
 }
@@ -398,11 +371,7 @@ async fn test_user_get_user_logins() {
         .mount(&server)
         .await;
 
-    let logins: Vec<_> = user
-        .get_user_logins()
-        .collect_all()
-        .await
-        .unwrap();
+    let logins: Vec<_> = user.get_user_logins().collect_all().await.unwrap();
     assert_eq!(logins.len(), 1);
 }
 
@@ -497,11 +466,7 @@ async fn test_user_get_features() {
         .mount(&server)
         .await;
 
-    let features: Vec<_> = user
-        .get_features()
-        .collect_all()
-        .await
-        .unwrap();
+    let features: Vec<_> = user.get_features().collect_all().await.unwrap();
     assert_eq!(features.len(), 1);
     assert_eq!(features[0]["feature"], "some_feature");
 }
@@ -513,9 +478,9 @@ async fn test_user_get_enabled_features() {
 
     Mock::given(method("GET"))
         .and(path("/api/v1/users/42/features/enabled"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!(
-            ["feature_a", "feature_b"]
-        )))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_json(serde_json::json!(["feature_a", "feature_b"])),
+        )
         .mount(&server)
         .await;
 
@@ -556,11 +521,7 @@ async fn test_user_get_content_exports() {
         .mount(&server)
         .await;
 
-    let exports: Vec<_> = user
-        .get_content_exports()
-        .collect_all()
-        .await
-        .unwrap();
+    let exports: Vec<_> = user.get_content_exports().collect_all().await.unwrap();
     assert_eq!(exports.len(), 1);
     assert_eq!(exports[0]["export_type"], "common_cartridge");
 }
@@ -578,11 +539,7 @@ async fn test_user_get_eportfolios() {
         .mount(&server)
         .await;
 
-    let portfolios: Vec<_> = user
-        .get_eportfolios()
-        .collect_all()
-        .await
-        .unwrap();
+    let portfolios: Vec<_> = user.get_eportfolios().collect_all().await.unwrap();
     assert_eq!(portfolios.len(), 1);
     assert_eq!(portfolios[0]["name"], "My Portfolio");
 }
@@ -600,11 +557,7 @@ async fn test_user_get_open_poll_sessions() {
         .mount(&server)
         .await;
 
-    let sessions: Vec<_> = user
-        .get_open_poll_sessions()
-        .collect_all()
-        .await
-        .unwrap();
+    let sessions: Vec<_> = user.get_open_poll_sessions().collect_all().await.unwrap();
     assert_eq!(sessions.len(), 1);
     assert_eq!(sessions[0]["poll_id"], 5);
 }
@@ -622,11 +575,7 @@ async fn test_user_get_closed_poll_sessions() {
         .mount(&server)
         .await;
 
-    let sessions: Vec<_> = user
-        .get_closed_poll_sessions()
-        .collect_all()
-        .await
-        .unwrap();
+    let sessions: Vec<_> = user.get_closed_poll_sessions().collect_all().await.unwrap();
     assert_eq!(sessions.len(), 1);
     assert_eq!(sessions[0]["poll_id"], 5);
 }

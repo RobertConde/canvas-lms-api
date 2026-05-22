@@ -86,19 +86,13 @@ async fn test_folder_get_files() {
         .await;
     Mock::given(method("GET"))
         .and(path("/api/v1/folders/1/files"))
-        .respond_with(
-            ResponseTemplate::new(200).set_body_json(serde_json::json!([file_json(10)])),
-        )
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([file_json(10)])))
         .mount(&server)
         .await;
 
     let canvas = Canvas::new(&server.uri(), "test-token").unwrap();
     let folder = canvas.get_folder(1).await.unwrap();
-    let files: Vec<_> = folder
-        .get_files()
-        .collect_all()
-        .await
-        .unwrap();
+    let files: Vec<_> = folder.get_files().collect_all().await.unwrap();
     assert_eq!(files.len(), 1);
     assert_eq!(files[0].id, 10);
 }
@@ -115,19 +109,14 @@ async fn test_folder_get_folders() {
     Mock::given(method("GET"))
         .and(path("/api/v1/folders/1/folders"))
         .respond_with(
-            ResponseTemplate::new(200)
-                .set_body_json(serde_json::json!([folder_json(2, "sub")])),
+            ResponseTemplate::new(200).set_body_json(serde_json::json!([folder_json(2, "sub")])),
         )
         .mount(&server)
         .await;
 
     let canvas = Canvas::new(&server.uri(), "test-token").unwrap();
     let folder = canvas.get_folder(1).await.unwrap();
-    let subs: Vec<_> = folder
-        .get_folders()
-        .collect_all()
-        .await
-        .unwrap();
+    let subs: Vec<_> = folder.get_folders().collect_all().await.unwrap();
     assert_eq!(subs.len(), 1);
     assert_eq!(subs[0].id, 2);
 }

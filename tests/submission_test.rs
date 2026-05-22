@@ -24,16 +24,15 @@ async fn setup(server: &MockServer) -> canvas_lms_api::resources::submission::Su
     Mock::given(method("GET"))
         .and(path("/api/v1/courses/1/assignments/2"))
         .respond_with(
-            ResponseTemplate::new(200)
-                .set_body_json(serde_json::json!({"id": 2, "course_id": 1, "name": "Assignment 1"})),
+            ResponseTemplate::new(200).set_body_json(
+                serde_json::json!({"id": 2, "course_id": 1, "name": "Assignment 1"}),
+            ),
         )
         .mount(server)
         .await;
     Mock::given(method("GET"))
         .and(path("/api/v1/courses/1/assignments/2/submissions/3"))
-        .respond_with(
-            ResponseTemplate::new(200).set_body_json(submission_json(10, 1, 2, 3)),
-        )
+        .respond_with(ResponseTemplate::new(200).set_body_json(submission_json(10, 1, 2, 3)))
         .mount(server)
         .await;
 
@@ -104,7 +103,9 @@ async fn test_submission_create_peer_review() {
     let submission = setup(&server).await;
 
     Mock::given(method("POST"))
-        .and(path("/api/v1/courses/1/assignments/2/submissions/3/peer_reviews"))
+        .and(path(
+            "/api/v1/courses/1/assignments/2/submissions/3/peer_reviews",
+        ))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
             "assessor_id": 99,
             "user_id": 7,
@@ -123,7 +124,9 @@ async fn test_submission_delete_peer_review() {
     let submission = setup(&server).await;
 
     Mock::given(method("DELETE"))
-        .and(path("/api/v1/courses/1/assignments/2/submissions/3/peer_reviews"))
+        .and(path(
+            "/api/v1/courses/1/assignments/2/submissions/3/peer_reviews",
+        ))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
             "assessor_id": 99,
             "user_id": 7,
@@ -142,7 +145,9 @@ async fn test_submission_get_peer_reviews() {
     let submission = setup(&server).await;
 
     Mock::given(method("GET"))
-        .and(path("/api/v1/courses/1/assignments/2/submissions/3/peer_reviews"))
+        .and(path(
+            "/api/v1/courses/1/assignments/2/submissions/3/peer_reviews",
+        ))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
             {"assessor_id": 10, "user_id": 7, "workflow_state": "assigned"},
             {"assessor_id": 11, "user_id": 7, "workflow_state": "completed"}

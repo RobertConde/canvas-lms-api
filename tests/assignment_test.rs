@@ -54,9 +54,7 @@ async fn setup(server: &MockServer) -> canvas_lms_api::resources::assignment::As
         .await;
     Mock::given(method("GET"))
         .and(path("/api/v1/courses/1/assignments/2"))
-        .respond_with(
-            ResponseTemplate::new(200).set_body_json(assignment_json(2, 1)),
-        )
+        .respond_with(ResponseTemplate::new(200).set_body_json(assignment_json(2, 1)))
         .mount(server)
         .await;
 
@@ -120,11 +118,7 @@ async fn test_assignment_get_submissions() {
         .mount(&server)
         .await;
 
-    let subs: Vec<_> = assignment
-        .get_submissions()
-        .collect_all()
-        .await
-        .unwrap();
+    let subs: Vec<_> = assignment.get_submissions().collect_all().await.unwrap();
     assert_eq!(subs.len(), 2);
     assert_eq!(subs[0].id, 10);
     assert_eq!(subs[0].course_id, Some(1));
@@ -137,9 +131,7 @@ async fn test_assignment_get_submission() {
 
     Mock::given(method("GET"))
         .and(path("/api/v1/courses/1/assignments/2/submissions/3"))
-        .respond_with(
-            ResponseTemplate::new(200).set_body_json(submission_json(10, 1, 2, 3)),
-        )
+        .respond_with(ResponseTemplate::new(200).set_body_json(submission_json(10, 1, 2, 3)))
         .mount(&server)
         .await;
 
@@ -155,9 +147,7 @@ async fn test_assignment_submit() {
 
     Mock::given(method("POST"))
         .and(path("/api/v1/courses/1/assignments/2/submissions"))
-        .respond_with(
-            ResponseTemplate::new(200).set_body_json(submission_json(12, 1, 2, 5)),
-        )
+        .respond_with(ResponseTemplate::new(200).set_body_json(submission_json(12, 1, 2, 5)))
         .mount(&server)
         .await;
 
@@ -186,11 +176,7 @@ async fn test_assignment_get_overrides() {
         .mount(&server)
         .await;
 
-    let overrides: Vec<_> = assignment
-        .get_overrides()
-        .collect_all()
-        .await
-        .unwrap();
+    let overrides: Vec<_> = assignment.get_overrides().collect_all().await.unwrap();
     assert_eq!(overrides.len(), 2);
     assert_eq!(overrides[0].id, 20);
     assert_eq!(overrides[0].course_id, Some(1));
@@ -250,11 +236,7 @@ async fn test_assignment_get_peer_reviews() {
         .mount(&server)
         .await;
 
-    let prs: Vec<_> = assignment
-        .get_peer_reviews()
-        .collect_all()
-        .await
-        .unwrap();
+    let prs: Vec<_> = assignment.get_peer_reviews().collect_all().await.unwrap();
     assert_eq!(prs.len(), 2);
 }
 
@@ -343,20 +325,16 @@ async fn test_course_get_assignment_groups() {
         .await;
     Mock::given(method("GET"))
         .and(path("/api/v1/courses/1/assignment_groups"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
-            group_json(5, 1),
-            group_json(6, 1)
-        ])))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_json(serde_json::json!([group_json(5, 1), group_json(6, 1)])),
+        )
         .mount(&server)
         .await;
 
     let canvas = Canvas::new(&server.uri(), "test-token").unwrap();
     let course = canvas.get_course(1).await.unwrap();
-    let groups: Vec<_> = course
-        .get_assignment_groups()
-        .collect_all()
-        .await
-        .unwrap();
+    let groups: Vec<_> = course.get_assignment_groups().collect_all().await.unwrap();
     assert_eq!(groups.len(), 2);
     assert_eq!(groups[0].id, 5);
     assert_eq!(groups[0].course_id, Some(1));
@@ -390,11 +368,7 @@ async fn test_assignment_group_edit() {
 
     let canvas = Canvas::new(&server.uri(), "test-token").unwrap();
     let course = canvas.get_course(1).await.unwrap();
-    let groups: Vec<_> = course
-        .get_assignment_groups()
-        .collect_all()
-        .await
-        .unwrap();
+    let groups: Vec<_> = course.get_assignment_groups().collect_all().await.unwrap();
     let group = &groups[0];
     let updated = group
         .edit(AssignmentGroupParams {
@@ -430,11 +404,7 @@ async fn test_assignment_group_delete() {
 
     let canvas = Canvas::new(&server.uri(), "test-token").unwrap();
     let course = canvas.get_course(1).await.unwrap();
-    let groups: Vec<_> = course
-        .get_assignment_groups()
-        .collect_all()
-        .await
-        .unwrap();
+    let groups: Vec<_> = course.get_assignment_groups().collect_all().await.unwrap();
     let deleted = groups[0].delete().await.unwrap();
     assert_eq!(deleted.id, 5);
 }
@@ -453,13 +423,16 @@ async fn test_assignment_set_extensions() {
         .await;
 
     let result = assignment
-        .set_extensions(&[(
-            "assignment_extensions[][user_id]".to_string(),
-            "10".to_string(),
-        ), (
-            "assignment_extensions[][extra_attempts]".to_string(),
-            "2".to_string(),
-        )])
+        .set_extensions(&[
+            (
+                "assignment_extensions[][user_id]".to_string(),
+                "10".to_string(),
+            ),
+            (
+                "assignment_extensions[][extra_attempts]".to_string(),
+                "2".to_string(),
+            ),
+        ])
         .await
         .unwrap();
     assert!(result.get("assignment_extensions").is_some());

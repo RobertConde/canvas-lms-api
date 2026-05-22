@@ -58,7 +58,11 @@ impl Enrollment {
         let val: Value = self
             .req()
             .post(
-                &format!("courses/{}/enrollments/{}/accept", self.course_id(), self.id),
+                &format!(
+                    "courses/{}/enrollments/{}/accept",
+                    self.course_id(),
+                    self.id
+                ),
                 &[],
             )
             .await?;
@@ -75,7 +79,11 @@ impl Enrollment {
         let val: Value = self
             .req()
             .post(
-                &format!("courses/{}/enrollments/{}/reject", self.course_id(), self.id),
+                &format!(
+                    "courses/{}/enrollments/{}/reject",
+                    self.course_id(),
+                    self.id
+                ),
                 &[],
             )
             .await?;

@@ -1,16 +1,14 @@
 use crate::{error::Result, http::Requester};
 use serde::de::DeserializeOwned;
-use std::{
-    collections::VecDeque,
-    future::Future,
-    marker::PhantomData,
-    pin::Pin,
-    sync::Arc,
-    task::{Context, Poll},
-};
+#[cfg(feature = "async")]
+use std::task::{Context, Poll};
+use std::{collections::VecDeque, marker::PhantomData, sync::Arc};
+#[cfg(feature = "async")]
+use std::{future::Future, pin::Pin};
 use url::Url;
 
 type InjectFn<T> = Arc<dyn Fn(T, Arc<Requester>) -> T + Send + Sync>;
+#[cfg(feature = "async")]
 type PendingFetch<T> = Pin<Box<dyn Future<Output = Result<(VecDeque<T>, Option<Url>)>> + Send>>;
 
 /// An async stream of Canvas API resources, fetched lazily page by page.
@@ -33,6 +31,7 @@ pub struct PageStream<T> {
     buffer: VecDeque<T>,
     inject_fn: Option<InjectFn<T>>,
     _phantom: PhantomData<T>,
+    #[cfg(feature = "async")]
     pending: Option<PendingFetch<T>>,
 }
 
@@ -53,6 +52,7 @@ impl<T: DeserializeOwned> PageStream<T> {
             buffer: VecDeque::new(),
             inject_fn: None,
             _phantom: PhantomData,
+            #[cfg(feature = "async")]
             pending: None,
         }
     }
@@ -74,6 +74,7 @@ impl<T: DeserializeOwned> PageStream<T> {
             buffer: VecDeque::new(),
             inject_fn: Some(Arc::new(inject)),
             _phantom: PhantomData,
+            #[cfg(feature = "async")]
             pending: None,
         }
     }
@@ -96,6 +97,7 @@ impl<T: DeserializeOwned> PageStream<T> {
             buffer: VecDeque::new(),
             inject_fn: Some(Arc::new(inject)),
             _phantom: PhantomData,
+            #[cfg(feature = "async")]
             pending: None,
         }
     }

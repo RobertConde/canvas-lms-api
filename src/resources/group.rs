@@ -469,6 +469,27 @@ impl Group {
             },
         )
     }
+
+    /// Upload a file to this group's file storage.
+    ///
+    /// Canvas uses a two-step upload: first POSTing metadata to obtain an upload URL,
+    /// then POSTing the file as multipart form data to that URL.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/groups/:id/files`
+    pub async fn upload_file(
+        &self,
+        request: crate::upload::UploadRequest,
+        data: Vec<u8>,
+    ) -> Result<File> {
+        crate::upload::initiate_and_upload(
+            self.req(),
+            &format!("groups/{}/files", self.id),
+            request,
+            data,
+        )
+        .await
+    }
 }
 
 /// Membership of a user in a Canvas group.

@@ -90,6 +90,24 @@ impl ContentMigration {
         )
     }
 
+    /// Fetch the progress object for this content migration.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/content_migrations/:id/progress`
+    pub async fn get_progress(&self) -> Result<crate::resources::progress::Progress> {
+        self.req()
+            .get(
+                &format!(
+                    "{}s/{}/content_migrations/{}/progress",
+                    self.parent_type(),
+                    self.parent_id(),
+                    self.id
+                ),
+                &[],
+            )
+            .await
+    }
+
     /// Update this content migration.
     ///
     /// # Canvas API

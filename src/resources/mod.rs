@@ -10,6 +10,7 @@ pub mod content_export;
 pub mod content_migration;
 pub mod conversation;
 pub mod course;
+pub mod custom_gradebook_column;
 pub mod discussion_topic;
 pub mod enrollment;
 pub mod enrollment_term;

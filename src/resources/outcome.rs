@@ -220,6 +220,27 @@ impl OutcomeGroup {
             )
             .await
     }
+
+    /// Import another outcome group into this group.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/accounts/:account_id/outcome_groups/:id/import`
+    /// `POST /api/v1/courses/:course_id/outcome_groups/:id/import`
+    pub async fn import_outcome_group(&self, source_group_id: u64) -> Result<OutcomeGroup> {
+        let params = vec![(
+            "source_outcome_group_id".to_string(),
+            source_group_id.to_string(),
+        )];
+        let mut group: OutcomeGroup = self
+            .req()
+            .post(
+                &format!("{}/outcome_groups/{}/import", self.context_path(), self.id),
+                &params,
+            )
+            .await?;
+        group.requester = self.requester.clone();
+        Ok(group)
+    }
 }
 
 /// An association between an outcome and an outcome group.

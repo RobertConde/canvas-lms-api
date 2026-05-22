@@ -9,6 +9,7 @@ use crate::{
         collaboration::Collaboration,
         content_export::{ContentExport, ContentExportParams},
         content_migration::{ContentMigration, Migrator},
+        custom_gradebook_column::{CustomGradebookColumn, CustomGradebookColumnParams},
         discussion_topic::DiscussionTopic,
         enrollment::Enrollment,
         external_tool::{ExternalTool, ExternalToolParams},
@@ -803,6 +804,19 @@ impl Course {
         )
     }
 
+    /// Fetch the root outcome group for this course.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/root_outcome_group`
+    pub async fn get_root_outcome_group(&self) -> Result<OutcomeGroup> {
+        let mut group: OutcomeGroup = self
+            .req()
+            .get(&format!("courses/{}/root_outcome_group", self.id), &[])
+            .await?;
+        group.requester = self.requester.clone();
+        Ok(group)
+    }
+
     /// Fetch a single outcome group by ID.
     ///
     /// # Canvas API
@@ -834,6 +848,49 @@ impl Course {
             .await?;
         group.requester = self.requester.clone();
         Ok(group)
+    }
+
+    // -------------------------------------------------------------------------
+    // Custom Gradebook Columns
+    // -------------------------------------------------------------------------
+
+    /// Stream all custom gradebook columns for this course.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:id/custom_gradebook_columns`
+    pub fn get_custom_columns(&self) -> PageStream<CustomGradebookColumn> {
+        let course_id = self.id;
+        PageStream::new_with_injector(
+            Arc::clone(self.req()),
+            &format!("courses/{course_id}/custom_gradebook_columns"),
+            vec![],
+            move |mut col: CustomGradebookColumn, req| {
+                col.requester = Some(Arc::clone(&req));
+                col.course_id = Some(course_id);
+                col
+            },
+        )
+    }
+
+    /// Create a new custom gradebook column in this course.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/courses/:id/custom_gradebook_columns`
+    pub async fn create_custom_column(
+        &self,
+        params: CustomGradebookColumnParams,
+    ) -> Result<CustomGradebookColumn> {
+        let form = wrap_params("column", &params);
+        let mut col: CustomGradebookColumn = self
+            .req()
+            .post(
+                &format!("courses/{}/custom_gradebook_columns", self.id),
+                &form,
+            )
+            .await?;
+        col.requester = self.requester.clone();
+        col.course_id = Some(self.id);
+        Ok(col)
     }
 
     // -------------------------------------------------------------------------

@@ -4,8 +4,12 @@ use crate::{
     pagination::PageStream,
     params::wrap_params,
     resources::{
-        communication_channel::CommunicationChannel, course::Course, enrollment::Enrollment,
-        file::File, folder::Folder,
+        communication_channel::CommunicationChannel,
+        content_migration::{ContentMigration, Migrator},
+        course::Course,
+        enrollment::Enrollment,
+        file::File,
+        folder::Folder,
     },
 };
 
@@ -502,6 +506,152 @@ impl User {
             &format!("users/{}/poll_sessions/closed", self.id),
             vec![],
         )
+    }
+
+    /// Fetch a single file from this user's files.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/users/:id/files/:file_id`
+    pub async fn get_file(&self, file_id: u64) -> Result<File> {
+        let mut f: File = self
+            .req()
+            .get(&format!("users/{}/files/{file_id}", self.id), &[])
+            .await?;
+        f.requester = self.requester.clone();
+        Ok(f)
+    }
+
+    /// Fetch a single folder from this user's folders.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/users/:id/folders/:folder_id`
+    pub async fn get_folder(&self, folder_id: u64) -> Result<Folder> {
+        let mut f: Folder = self
+            .req()
+            .get(&format!("users/{}/folders/{folder_id}", self.id), &[])
+            .await?;
+        f.requester = self.requester.clone();
+        Ok(f)
+    }
+
+    /// Resolve a folder path under this user's files root.
+    ///
+    /// Pass `None` to get the root folder. Pass a path like
+    /// `"Folder_Level_1/Folder_Level_2"` to walk the tree.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/users/:id/folders/by_path/*full_path`
+    pub fn resolve_path(&self, full_path: Option<&str>) -> PageStream<Folder> {
+        let endpoint = match full_path {
+            Some(p) if !p.is_empty() => {
+                format!("users/{}/folders/by_path/{p}", self.id)
+            }
+            _ => format!("users/{}/folders/by_path", self.id),
+        };
+        PageStream::new_with_injector(
+            Arc::clone(self.req()),
+            &endpoint,
+            vec![],
+            |mut f: Folder, req| {
+                f.requester = Some(Arc::clone(&req));
+                f
+            },
+        )
+    }
+
+    /// Stream grade-change audit events where this user is a grader.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/audit/grade_change/graders/:id`
+    pub fn get_grade_change_events_for_grader(&self) -> PageStream<serde_json::Value> {
+        PageStream::new(
+            Arc::clone(self.req()),
+            &format!("audit/grade_change/graders/{}", self.id),
+            vec![],
+        )
+    }
+
+    /// Stream grade-change audit events where this user is a student.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/audit/grade_change/students/:id`
+    pub fn get_grade_change_events_for_student(&self) -> PageStream<serde_json::Value> {
+        PageStream::new(
+            Arc::clone(self.req()),
+            &format!("audit/grade_change/students/{}", self.id),
+            vec![],
+        )
+    }
+
+    /// Fetch a single content migration for this user.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/users/:id/content_migrations/:migration_id`
+    pub async fn get_content_migration(&self, migration_id: u64) -> Result<ContentMigration> {
+        let mut m: ContentMigration = self
+            .req()
+            .get(
+                &format!("users/{}/content_migrations/{migration_id}", self.id),
+                &[],
+            )
+            .await?;
+        m.requester = self.requester.clone();
+        Ok(m)
+    }
+
+    /// Stream all content migrations for this user.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/users/:id/content_migrations`
+    pub fn get_content_migrations(&self) -> PageStream<ContentMigration> {
+        let user_id = self.id;
+        PageStream::new_with_injector(
+            Arc::clone(self.req()),
+            &format!("users/{user_id}/content_migrations"),
+            vec![],
+            move |mut m: ContentMigration, req| {
+                m.requester = Some(Arc::clone(&req));
+                m.user_id = Some(user_id);
+                m
+            },
+        )
+    }
+
+    /// Create a content migration for this user.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/users/:id/content_migrations`
+    pub async fn create_content_migration(&self, migration_type: &str) -> Result<ContentMigration> {
+        let params = vec![("migration_type".to_string(), migration_type.to_string())];
+        let mut m: ContentMigration = self
+            .req()
+            .post(&format!("users/{}/content_migrations", self.id), &params)
+            .await?;
+        m.requester = self.requester.clone();
+        m.user_id = Some(self.id);
+        Ok(m)
+    }
+
+    /// Stream available migration systems (migrators) for this user.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/users/:id/content_migrations/migrators`
+    pub fn get_migration_systems(&self) -> PageStream<Migrator> {
+        PageStream::new(
+            Arc::clone(self.req()),
+            &format!("users/{}/content_migrations/migrators", self.id),
+            vec![],
+        )
+    }
+
+    /// Fetch a specific feature flag for this user.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/users/:id/features/flags/:feature`
+    pub async fn get_feature_flag(&self, feature: &str) -> Result<serde_json::Value> {
+        self.req()
+            .get(&format!("users/{}/features/flags/{feature}", self.id), &[])
+            .await
     }
 
     /// Upload a file to this user's file storage.

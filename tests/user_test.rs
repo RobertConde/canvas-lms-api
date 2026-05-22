@@ -579,3 +579,254 @@ async fn test_user_get_closed_poll_sessions() {
     assert_eq!(sessions.len(), 1);
     assert_eq!(sessions[0]["poll_id"], 5);
 }
+
+#[tokio::test]
+async fn test_user_get_file() {
+    let server = MockServer::start().await;
+    let user = setup(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/users/42/files/1"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 1,
+            "display_name": "User_File.docx",
+            "filename": "User_File.docx",
+            "size": 1024
+        })))
+        .mount(&server)
+        .await;
+
+    let file = user.get_file(1).await.unwrap();
+    assert_eq!(file.id, 1);
+    assert_eq!(file.display_name.as_deref(), Some("User_File.docx"));
+    assert_eq!(file.size, Some(1024));
+}
+
+#[tokio::test]
+async fn test_user_get_folder() {
+    let server = MockServer::start().await;
+    let user = setup(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/users/42/folders/1"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 1,
+            "name": "Folder 1"
+        })))
+        .mount(&server)
+        .await;
+
+    let folder = user.get_folder(1).await.unwrap();
+    assert_eq!(folder.id, 1);
+    assert_eq!(folder.name.as_deref(), Some("Folder 1"));
+}
+
+#[tokio::test]
+async fn test_user_resolve_path() {
+    let server = MockServer::start().await;
+    let user = setup(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path(
+            "/api/v1/users/42/folders/by_path/Folder_Level_1/Folder_Level_2/Folder_Level_3",
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"id": 1, "name": "my_files"},
+            {"id": 2, "name": "Folder_Level_1"},
+            {"id": 3, "name": "Folder_Level_2"},
+            {"id": 4, "name": "Folder_Level_3"}
+        ])))
+        .mount(&server)
+        .await;
+
+    let folders = user
+        .resolve_path(Some("Folder_Level_1/Folder_Level_2/Folder_Level_3"))
+        .collect_all()
+        .await
+        .unwrap();
+    assert_eq!(folders.len(), 4);
+    assert_eq!(folders[0].name.as_deref(), Some("my_files"));
+    assert_eq!(folders[3].name.as_deref(), Some("Folder_Level_3"));
+}
+
+#[tokio::test]
+async fn test_user_resolve_path_null() {
+    let server = MockServer::start().await;
+    let user = setup(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/users/42/folders/by_path"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"id": 1, "name": "my_files"}
+        ])))
+        .mount(&server)
+        .await;
+
+    let folders = user.resolve_path(None).collect_all().await.unwrap();
+    assert_eq!(folders.len(), 1);
+    assert_eq!(folders[0].name.as_deref(), Some("my_files"));
+}
+
+#[tokio::test]
+async fn test_user_get_grade_change_events_for_grader() {
+    let server = MockServer::start().await;
+    let user = setup(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/audit/grade_change/graders/42"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"id": "uuid-1", "event_type": "grade_change", "links": {"course": 42}},
+            {"id": "uuid-2", "event_type": "grade_change", "links": {"course": 42}}
+        ])))
+        .mount(&server)
+        .await;
+
+    let events = user
+        .get_grade_change_events_for_grader()
+        .collect_all()
+        .await
+        .unwrap();
+    assert_eq!(events.len(), 2);
+    assert_eq!(events[0]["event_type"], "grade_change");
+}
+
+#[tokio::test]
+async fn test_user_get_grade_change_events_for_student() {
+    let server = MockServer::start().await;
+    let user = setup(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/audit/grade_change/students/42"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"id": "uuid-1", "event_type": "grade_change", "links": {"course": 42}},
+            {"id": "uuid-2", "event_type": "grade_change", "links": {"course": 42}}
+        ])))
+        .mount(&server)
+        .await;
+
+    let events = user
+        .get_grade_change_events_for_student()
+        .collect_all()
+        .await
+        .unwrap();
+    assert_eq!(events.len(), 2);
+    assert_eq!(events[0]["event_type"], "grade_change");
+}
+
+#[tokio::test]
+async fn test_user_get_content_migration() {
+    let server = MockServer::start().await;
+    let user = setup(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/users/42/content_migrations/1"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 1,
+            "migration_type": "dummy_importer",
+            "user_id": 42
+        })))
+        .mount(&server)
+        .await;
+
+    let migration = user.get_content_migration(1).await.unwrap();
+    assert_eq!(migration.id, 1);
+    assert_eq!(migration.migration_type.as_deref(), Some("dummy_importer"));
+}
+
+#[tokio::test]
+async fn test_user_get_content_migrations() {
+    let server = MockServer::start().await;
+    let user = setup(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/users/42/content_migrations"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"id": 1, "migration_type": "dummy_importer", "user_id": 42},
+            {"id": 2, "migration_type": "dummy_importer", "user_id": 42}
+        ])))
+        .mount(&server)
+        .await;
+
+    let migrations = user.get_content_migrations().collect_all().await.unwrap();
+    assert_eq!(migrations.len(), 2);
+    assert_eq!(migrations[0].id, 1);
+    assert_eq!(
+        migrations[0].migration_type.as_deref(),
+        Some("dummy_importer")
+    );
+    assert_eq!(migrations[1].id, 2);
+}
+
+#[tokio::test]
+async fn test_user_create_content_migration() {
+    let server = MockServer::start().await;
+    let user = setup(&server).await;
+
+    Mock::given(method("POST"))
+        .and(path("/api/v1/users/42/content_migrations"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 3,
+            "migration_type": "dummy_importer",
+            "user_id": 42
+        })))
+        .mount(&server)
+        .await;
+
+    let migration = user
+        .create_content_migration("dummy_importer")
+        .await
+        .unwrap();
+    assert_eq!(migration.id, 3);
+    assert_eq!(migration.migration_type.as_deref(), Some("dummy_importer"));
+    assert_eq!(migration.user_id, Some(42));
+}
+
+#[tokio::test]
+async fn test_user_get_migration_systems() {
+    let server = MockServer::start().await;
+    let user = setup(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/users/42/content_migrations/migrators"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {
+                "type": "dummy_importer",
+                "requires_file_upload": true,
+                "name": "Dummy Importer 01"
+            },
+            {
+                "type": "dummy_importer_02",
+                "requires_file_upload": false,
+                "name": "Dummy Importer 02"
+            }
+        ])))
+        .mount(&server)
+        .await;
+
+    let migrators = user.get_migration_systems().collect_all().await.unwrap();
+    assert_eq!(migrators.len(), 2);
+    assert_eq!(migrators[0].r#type.as_deref(), Some("dummy_importer"));
+    assert_eq!(migrators[0].requires_file_upload, Some(true));
+    assert_eq!(migrators[0].name.as_deref(), Some("Dummy Importer 01"));
+    assert_eq!(migrators[1].r#type.as_deref(), Some("dummy_importer_02"));
+    assert_eq!(migrators[1].requires_file_upload, Some(false));
+}
+
+#[tokio::test]
+async fn test_user_get_feature_flag() {
+    let server = MockServer::start().await;
+    let user = setup(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/users/42/features/flags/high_contrast"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "feature": "high_contrast",
+            "state": "allowed"
+        })))
+        .mount(&server)
+        .await;
+
+    let flag = user.get_feature_flag("high_contrast").await.unwrap();
+    assert_eq!(flag["feature"], "high_contrast");
+    assert_eq!(flag["state"], "allowed");
+}

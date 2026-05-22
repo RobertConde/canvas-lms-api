@@ -268,6 +268,114 @@ impl Quiz {
             )
             .await
     }
+
+    /// Fetch a single question group by ID.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/quizzes/:id/groups/:group_id`
+    pub async fn get_quiz_group(&self, group_id: u64) -> Result<QuizGroup> {
+        let course_id = self.course_id_or_err()?;
+        let mut g: QuizGroup = self
+            .req()
+            .get(
+                &format!("courses/{course_id}/quizzes/{}/groups/{group_id}", self.id),
+                &[],
+            )
+            .await?;
+        g.requester = self.requester.clone();
+        g.course_id = self.course_id;
+        g.quiz_id = Some(self.id);
+        Ok(g)
+    }
+
+    /// Create a question group in this quiz.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/courses/:course_id/quizzes/:id/groups`
+    pub async fn create_question_group(
+        &self,
+        quiz_group: &[(String, String)],
+    ) -> Result<QuizGroup> {
+        let course_id = self.course_id_or_err()?;
+        let mut g: QuizGroup = self
+            .req()
+            .post(
+                &format!("courses/{course_id}/quizzes/{}/groups", self.id),
+                quiz_group,
+            )
+            .await?;
+        g.requester = self.requester.clone();
+        g.course_id = self.course_id;
+        g.quiz_id = Some(self.id);
+        Ok(g)
+    }
+
+    /// Fetch a single quiz report by ID.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/quizzes/:id/reports/:report_id`
+    pub async fn get_quiz_report(&self, report_id: u64) -> Result<QuizReport> {
+        let course_id = self.course_id_or_err()?;
+        let mut r: QuizReport = self
+            .req()
+            .get(
+                &format!(
+                    "courses/{course_id}/quizzes/{}/reports/{report_id}",
+                    self.id
+                ),
+                &[],
+            )
+            .await?;
+        r.requester = self.requester.clone();
+        Ok(r)
+    }
+
+    /// Stream all reports for this quiz.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/quizzes/:id/reports`
+    pub fn get_all_quiz_reports(&self) -> PageStream<QuizReport> {
+        let course_id = self.course_id.unwrap_or(0);
+        let quiz_id = self.id;
+        PageStream::new_with_injector(
+            Arc::clone(self.req()),
+            &format!("courses/{course_id}/quizzes/{quiz_id}/reports"),
+            vec![],
+            move |mut r: QuizReport, req| {
+                r.requester = Some(Arc::clone(&req));
+                r
+            },
+        )
+    }
+
+    /// Create a quiz report.
+    ///
+    /// Valid `report_type` values are `"student_analysis"` and `"item_analysis"`.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/courses/:course_id/quizzes/:id/reports`
+    pub async fn create_report(&self, report_type: &str) -> Result<QuizReport> {
+        if report_type != "student_analysis" && report_type != "item_analysis" {
+            return Err(CanvasError::BadRequest {
+                message: format!("Invalid report_type: {report_type}"),
+                errors: vec![],
+            });
+        }
+        let course_id = self.course_id_or_err()?;
+        let params = vec![(
+            "quiz_report[report_type]".to_string(),
+            report_type.to_string(),
+        )];
+        let mut r: QuizReport = self
+            .req()
+            .post(
+                &format!("courses/{course_id}/quizzes/{}/reports", self.id),
+                &params,
+            )
+            .await?;
+        r.requester = self.requester.clone();
+        Ok(r)
+    }
 }
 
 /// A question within a Canvas quiz.
@@ -286,6 +394,59 @@ pub struct QuizQuestion {
     pub(crate) requester: Option<Arc<Requester>>,
     #[serde(skip)]
     pub course_id: Option<u64>,
+}
+
+impl QuizQuestion {
+    /// Edit this question.
+    ///
+    /// # Canvas API
+    /// `PUT /api/v1/courses/:course_id/quizzes/:quiz_id/questions/:id`
+    pub async fn edit(&self, params: QuizQuestionParams) -> Result<QuizQuestion> {
+        let course_id = self.course_id.ok_or_else(|| CanvasError::BadRequest {
+            message: "QuizQuestion has no course_id".to_string(),
+            errors: vec![],
+        })?;
+        let quiz_id = self.quiz_id.ok_or_else(|| CanvasError::BadRequest {
+            message: "QuizQuestion has no quiz_id".to_string(),
+            errors: vec![],
+        })?;
+        let form = wrap_params("question", &params);
+        let mut q: QuizQuestion = self
+            .req()
+            .put(
+                &format!(
+                    "courses/{course_id}/quizzes/{quiz_id}/questions/{}",
+                    self.id
+                ),
+                &form,
+            )
+            .await?;
+        q.requester = self.requester.clone();
+        q.course_id = self.course_id;
+        q.quiz_id = self.quiz_id;
+        Ok(q)
+    }
+
+    /// Delete this question.
+    ///
+    /// # Canvas API
+    /// `DELETE /api/v1/courses/:course_id/quizzes/:quiz_id/questions/:id`
+    pub async fn delete(&self) -> Result<()> {
+        let course_id = self.course_id.ok_or_else(|| CanvasError::BadRequest {
+            message: "QuizQuestion has no course_id".to_string(),
+            errors: vec![],
+        })?;
+        let quiz_id = self.quiz_id.ok_or_else(|| CanvasError::BadRequest {
+            message: "QuizQuestion has no quiz_id".to_string(),
+            errors: vec![],
+        })?;
+        self.req()
+            .delete_void(&format!(
+                "courses/{course_id}/quizzes/{quiz_id}/questions/{}",
+                self.id
+            ))
+            .await
+    }
 }
 
 /// A student's submission for a Canvas quiz.
@@ -361,16 +522,73 @@ impl QuizSubmission {
     ///
     /// # Canvas API
     /// `GET /api/v1/quiz_submissions/:id/questions`
-    pub async fn get_submission_questions(&self) -> Result<Vec<serde_json::Value>> {
+    pub async fn get_submission_questions(&self) -> Result<Vec<QuizSubmissionQuestion>> {
         let resp: serde_json::Value = self
             .req()
             .get(&format!("quiz_submissions/{}/questions", self.id), &[])
             .await?;
-        Ok(resp
+        let arr = resp
             .get("quiz_submission_questions")
             .and_then(|v| v.as_array())
             .cloned()
-            .unwrap_or_default())
+            .unwrap_or_default();
+        let mut questions: Vec<QuizSubmissionQuestion> = arr
+            .into_iter()
+            .map(serde_json::from_value)
+            .collect::<std::result::Result<_, _>>()?;
+        for q in &mut questions {
+            q.requester = self.requester.clone();
+        }
+        Ok(questions)
+    }
+
+    /// Stream submission events for this submission.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/quizzes/:quiz_id/submissions/:id/events`
+    pub fn get_submission_events(&self) -> PageStream<QuizSubmissionEvent> {
+        let prefix = self
+            .course_quiz_prefix()
+            .unwrap_or_else(|_| format!("quiz_submissions/{}/events", self.id));
+        PageStream::new(Arc::clone(self.req()), &format!("{prefix}/events"), vec![])
+    }
+
+    /// Submit events for this submission.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/courses/:course_id/quizzes/:quiz_id/submissions/:id/events`
+    pub async fn submit_events(&self, params: &[(String, String)]) -> Result<()> {
+        let prefix = self.course_quiz_prefix()?;
+        self.req()
+            .post_void_with_params(&format!("{prefix}/events"), params)
+            .await
+    }
+
+    /// Answer questions for this submission.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/quiz_submissions/:id/questions`
+    pub async fn answer_submission_questions(
+        &self,
+        params: &[(String, String)],
+    ) -> Result<Vec<QuizSubmissionQuestion>> {
+        let resp: serde_json::Value = self
+            .req()
+            .post(&format!("quiz_submissions/{}/questions", self.id), params)
+            .await?;
+        let arr = resp
+            .get("quiz_submission_questions")
+            .and_then(|v| v.as_array())
+            .cloned()
+            .unwrap_or_default();
+        let mut questions: Vec<QuizSubmissionQuestion> = arr
+            .into_iter()
+            .map(serde_json::from_value)
+            .collect::<std::result::Result<_, _>>()?;
+        for q in &mut questions {
+            q.requester = self.requester.clone();
+        }
+        Ok(questions)
     }
 
     /// Get the time remaining for this submission.
@@ -401,5 +619,189 @@ impl QuizSubmission {
         let mut s: QuizSubmission = serde_json::from_value(sub_val)?;
         self.propagate(&mut s);
         Ok(s)
+    }
+}
+
+/// A group of questions within a Canvas quiz.
+#[derive(Debug, Clone, Deserialize, Serialize, canvas_lms_api_derive::CanvasResource)]
+pub struct QuizGroup {
+    pub id: u64,
+    pub quiz_id: Option<u64>,
+    pub name: Option<String>,
+    pub pick_count: Option<u64>,
+    pub question_points: Option<f64>,
+    pub assessment_question_bank_id: Option<u64>,
+    pub position: Option<u64>,
+
+    #[serde(skip)]
+    pub(crate) requester: Option<Arc<Requester>>,
+    #[serde(skip)]
+    pub course_id: Option<u64>,
+}
+
+impl QuizGroup {
+    fn course_quiz_prefix(&self) -> Result<String> {
+        let course_id = self.course_id.ok_or_else(|| CanvasError::BadRequest {
+            message: "QuizGroup has no course_id".to_string(),
+            errors: vec![],
+        })?;
+        let quiz_id = self.quiz_id.ok_or_else(|| CanvasError::BadRequest {
+            message: "QuizGroup has no quiz_id".to_string(),
+            errors: vec![],
+        })?;
+        Ok(format!(
+            "courses/{course_id}/quizzes/{quiz_id}/groups/{}",
+            self.id
+        ))
+    }
+
+    /// Update this question group.
+    ///
+    /// # Canvas API
+    /// `PUT /api/v1/courses/:course_id/quizzes/:quiz_id/groups/:id`
+    pub async fn update(&self, params: &[(String, String)]) -> Result<QuizGroup> {
+        let prefix = self.course_quiz_prefix()?;
+        let mut g: QuizGroup = self.req().put(&prefix, params).await?;
+        g.requester = self.requester.clone();
+        g.course_id = self.course_id;
+        g.quiz_id = self.quiz_id;
+        Ok(g)
+    }
+
+    /// Delete this question group.
+    ///
+    /// # Canvas API
+    /// `DELETE /api/v1/courses/:course_id/quizzes/:quiz_id/groups/:id`
+    pub async fn delete(&self) -> Result<()> {
+        let prefix = self.course_quiz_prefix()?;
+        self.req().delete_void(&prefix).await
+    }
+
+    /// Reorder items in this question group.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/courses/:course_id/quizzes/:quiz_id/groups/:id/reorder`
+    pub async fn reorder_question_group(&self, params: &[(String, String)]) -> Result<()> {
+        let prefix = self.course_quiz_prefix()?;
+        self.req()
+            .post_void_with_params(&format!("{prefix}/reorder"), params)
+            .await
+    }
+}
+
+/// A Canvas quiz report.
+#[derive(Debug, Clone, Deserialize, Serialize, canvas_lms_api_derive::CanvasResource)]
+pub struct QuizReport {
+    pub id: Option<u64>,
+    pub quiz_id: Option<u64>,
+    pub course_id: Option<u64>,
+    pub report_type: Option<String>,
+    pub readable_type: Option<String>,
+    pub includes_all_versions: Option<bool>,
+    pub anonymous: Option<bool>,
+    pub generatable: Option<bool>,
+    pub created_at: Option<DateTime<Utc>>,
+    pub updated_at: Option<DateTime<Utc>>,
+    pub file: Option<serde_json::Value>,
+
+    #[serde(skip)]
+    pub(crate) requester: Option<Arc<Requester>>,
+}
+
+impl QuizReport {
+    /// Abort or delete this quiz report.
+    ///
+    /// # Canvas API
+    /// `DELETE /api/v1/courses/:course_id/quizzes/:quiz_id/reports/:id`
+    pub async fn abort_or_delete(&self) -> Result<()> {
+        let course_id = self.course_id.ok_or_else(|| CanvasError::BadRequest {
+            message: "QuizReport has no course_id".to_string(),
+            errors: vec![],
+        })?;
+        let quiz_id = self.quiz_id.ok_or_else(|| CanvasError::BadRequest {
+            message: "QuizReport has no quiz_id".to_string(),
+            errors: vec![],
+        })?;
+        let report_id = self.id.ok_or_else(|| CanvasError::BadRequest {
+            message: "QuizReport has no id".to_string(),
+            errors: vec![],
+        })?;
+        self.req()
+            .delete_void(&format!(
+                "courses/{course_id}/quizzes/{quiz_id}/reports/{report_id}"
+            ))
+            .await
+    }
+}
+
+/// A single event captured during a quiz submission.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct QuizSubmissionEvent {
+    pub client_timestamp: Option<String>,
+    pub event_type: Option<String>,
+    pub event_data: Option<serde_json::Value>,
+}
+
+/// A question shown during a quiz submission.
+#[derive(Debug, Clone, Deserialize, Serialize, canvas_lms_api_derive::CanvasResource)]
+pub struct QuizSubmissionQuestion {
+    pub id: Option<u64>,
+    pub flagged: Option<bool>,
+    pub answer: Option<serde_json::Value>,
+    pub quiz_submission_id: Option<u64>,
+    pub validation_token: Option<String>,
+    pub attempt: Option<u64>,
+
+    #[serde(skip)]
+    pub(crate) requester: Option<Arc<Requester>>,
+}
+
+impl QuizSubmissionQuestion {
+    fn sub_question_prefix(&self) -> Result<String> {
+        let sub_id = self
+            .quiz_submission_id
+            .ok_or_else(|| CanvasError::BadRequest {
+                message: "QuizSubmissionQuestion has no quiz_submission_id".to_string(),
+                errors: vec![],
+            })?;
+        let q_id = self.id.ok_or_else(|| CanvasError::BadRequest {
+            message: "QuizSubmissionQuestion has no id".to_string(),
+            errors: vec![],
+        })?;
+        Ok(format!("quiz_submissions/{sub_id}/questions/{q_id}"))
+    }
+
+    fn flag_params(&self, validation_token: &str) -> Vec<(String, String)> {
+        let attempt = self.attempt.unwrap_or(1).to_string();
+        vec![
+            ("validation_token".to_string(), validation_token.to_string()),
+            ("attempt".to_string(), attempt),
+        ]
+    }
+
+    /// Flag this question.
+    ///
+    /// # Canvas API
+    /// `PUT /api/v1/quiz_submissions/:quiz_submission_id/questions/:id/flag`
+    pub async fn flag(&self, validation_token: &str) -> Result<QuizSubmissionQuestion> {
+        let prefix = self.sub_question_prefix()?;
+        let params = self.flag_params(validation_token);
+        let mut q: QuizSubmissionQuestion =
+            self.req().put(&format!("{prefix}/flag"), &params).await?;
+        q.requester = self.requester.clone();
+        Ok(q)
+    }
+
+    /// Unflag this question.
+    ///
+    /// # Canvas API
+    /// `PUT /api/v1/quiz_submissions/:quiz_submission_id/questions/:id/unflag`
+    pub async fn unflag(&self, validation_token: &str) -> Result<QuizSubmissionQuestion> {
+        let prefix = self.sub_question_prefix()?;
+        let params = self.flag_params(validation_token);
+        let mut q: QuizSubmissionQuestion =
+            self.req().put(&format!("{prefix}/unflag"), &params).await?;
+        q.requester = self.requester.clone();
+        Ok(q)
     }
 }

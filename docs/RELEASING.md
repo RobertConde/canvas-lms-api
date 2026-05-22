@@ -36,6 +36,9 @@ Add a link reference at the bottom of the file:
 The CI matrix runs three separate configurations. You **must** run all three locally and fix any failures before tagging. A failure in any one of them will break CI on the published tag.
 
 ```bash
+# 0. Formatting (fails fast — do this first)
+cargo fmt --check
+
 # 1. Default features (async only)
 cargo test
 cargo clippy -- -D warnings

@@ -4,7 +4,6 @@ use canvas_lms_api::{
     },
     Canvas,
 };
-use futures::StreamExt;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
@@ -123,11 +122,9 @@ async fn test_assignment_get_submissions() {
 
     let subs: Vec<_> = assignment
         .get_submissions()
-        .collect::<Vec<_>>()
+        .collect_all()
         .await
-        .into_iter()
-        .map(|r| r.unwrap())
-        .collect();
+        .unwrap();
     assert_eq!(subs.len(), 2);
     assert_eq!(subs[0].id, 10);
     assert_eq!(subs[0].course_id, Some(1));
@@ -191,11 +188,9 @@ async fn test_assignment_get_overrides() {
 
     let overrides: Vec<_> = assignment
         .get_overrides()
-        .collect::<Vec<_>>()
+        .collect_all()
         .await
-        .into_iter()
-        .map(|r| r.unwrap())
-        .collect();
+        .unwrap();
     assert_eq!(overrides.len(), 2);
     assert_eq!(overrides[0].id, 20);
     assert_eq!(overrides[0].course_id, Some(1));
@@ -257,11 +252,9 @@ async fn test_assignment_get_peer_reviews() {
 
     let prs: Vec<_> = assignment
         .get_peer_reviews()
-        .collect::<Vec<_>>()
+        .collect_all()
         .await
-        .into_iter()
-        .map(|r| r.unwrap())
-        .collect();
+        .unwrap();
     assert_eq!(prs.len(), 2);
 }
 
@@ -281,11 +274,9 @@ async fn test_assignment_get_gradeable_students() {
 
     let students: Vec<_> = assignment
         .get_gradeable_students()
-        .collect::<Vec<_>>()
+        .collect_all()
         .await
-        .into_iter()
-        .map(|r| r.unwrap())
-        .collect();
+        .unwrap();
     assert_eq!(students.len(), 2);
 }
 
@@ -363,11 +354,9 @@ async fn test_course_get_assignment_groups() {
     let course = canvas.get_course(1).await.unwrap();
     let groups: Vec<_> = course
         .get_assignment_groups()
-        .collect::<Vec<_>>()
+        .collect_all()
         .await
-        .into_iter()
-        .map(|r| r.unwrap())
-        .collect();
+        .unwrap();
     assert_eq!(groups.len(), 2);
     assert_eq!(groups[0].id, 5);
     assert_eq!(groups[0].course_id, Some(1));
@@ -403,11 +392,9 @@ async fn test_assignment_group_edit() {
     let course = canvas.get_course(1).await.unwrap();
     let groups: Vec<_> = course
         .get_assignment_groups()
-        .collect::<Vec<_>>()
+        .collect_all()
         .await
-        .into_iter()
-        .map(|r| r.unwrap())
-        .collect();
+        .unwrap();
     let group = &groups[0];
     let updated = group
         .edit(AssignmentGroupParams {
@@ -445,11 +432,9 @@ async fn test_assignment_group_delete() {
     let course = canvas.get_course(1).await.unwrap();
     let groups: Vec<_> = course
         .get_assignment_groups()
-        .collect::<Vec<_>>()
+        .collect_all()
         .await
-        .into_iter()
-        .map(|r| r.unwrap())
-        .collect();
+        .unwrap();
     let deleted = groups[0].delete().await.unwrap();
     assert_eq!(deleted.id, 5);
 }

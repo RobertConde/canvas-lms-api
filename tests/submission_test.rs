@@ -1,5 +1,4 @@
 use canvas_lms_api::{resources::submission::EditSubmissionParams, Canvas};
-use futures::StreamExt;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
@@ -153,11 +152,9 @@ async fn test_submission_get_peer_reviews() {
 
     let prs: Vec<_> = submission
         .get_submission_peer_reviews()
-        .collect::<Vec<_>>()
+        .collect_all()
         .await
-        .into_iter()
-        .map(|r| r.unwrap())
-        .collect();
+        .unwrap();
     assert_eq!(prs.len(), 2);
     assert_eq!(prs[0]["assessor_id"], 10);
 }

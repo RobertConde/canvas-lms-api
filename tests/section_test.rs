@@ -2,7 +2,6 @@ use canvas_lms_api::{
     resources::section::{EnrollUserParams, UpdateSectionParams},
     Canvas,
 };
-use futures::StreamExt;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
@@ -122,11 +121,9 @@ async fn test_section_get_enrollments() {
 
     let enrollments: Vec<_> = section
         .get_enrollments()
-        .collect::<Vec<_>>()
+        .collect_all()
         .await
-        .into_iter()
-        .map(|r| r.unwrap())
-        .collect();
+        .unwrap();
     assert_eq!(enrollments.len(), 2);
     assert_eq!(enrollments[0].id, 20);
 }
@@ -195,11 +192,9 @@ async fn test_section_get_multiple_submissions() {
 
     let subs: Vec<_> = section
         .get_multiple_submissions()
-        .collect::<Vec<_>>()
+        .collect_all()
         .await
-        .into_iter()
-        .map(|r| r.unwrap())
-        .collect();
+        .unwrap();
     assert_eq!(subs.len(), 1);
     assert_eq!(subs[0].id, 30);
 }

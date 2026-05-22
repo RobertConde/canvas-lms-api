@@ -2,7 +2,6 @@ use canvas_lms_api::{
     resources::group::{GroupCategoryParams, UpdateGroupParams, UpdateMembershipParams},
     Canvas,
 };
-use futures::StreamExt;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
@@ -98,11 +97,9 @@ async fn test_group_get_users() {
 
     let users: Vec<_> = group
         .get_users()
-        .collect::<Vec<_>>()
+        .collect_all()
         .await
-        .into_iter()
-        .map(|r| r.unwrap())
-        .collect();
+        .unwrap();
     assert_eq!(users.len(), 2);
     assert_eq!(users[0].id, 10);
 }
@@ -123,11 +120,9 @@ async fn test_group_get_memberships() {
 
     let memberships: Vec<_> = group
         .get_memberships()
-        .collect::<Vec<_>>()
+        .collect_all()
         .await
-        .into_iter()
-        .map(|r| r.unwrap())
-        .collect();
+        .unwrap();
     assert_eq!(memberships.len(), 2);
     assert_eq!(memberships[0].id, 20);
     assert_eq!(memberships[0].group_id, Some(1));
@@ -244,11 +239,9 @@ async fn test_group_get_files() {
 
     let files: Vec<_> = group
         .get_files()
-        .collect::<Vec<_>>()
+        .collect_all()
         .await
-        .into_iter()
-        .map(|r| r.unwrap())
-        .collect();
+        .unwrap();
     assert_eq!(files.len(), 1);
     assert_eq!(files[0].id, 100);
 }
@@ -268,11 +261,9 @@ async fn test_group_get_folders() {
 
     let folders: Vec<_> = group
         .get_folders()
-        .collect::<Vec<_>>()
+        .collect_all()
         .await
-        .into_iter()
-        .map(|r| r.unwrap())
-        .collect();
+        .unwrap();
     assert_eq!(folders.len(), 1);
     assert_eq!(folders[0].id, 200);
 }
@@ -311,11 +302,9 @@ async fn test_group_get_pages() {
 
     let pages: Vec<_> = group
         .get_pages()
-        .collect::<Vec<_>>()
+        .collect_all()
         .await
-        .into_iter()
-        .map(|r| r.unwrap())
-        .collect();
+        .unwrap();
     assert_eq!(pages.len(), 1);
     assert_eq!(pages[0].url.as_deref(), Some("welcome"));
     assert_eq!(pages[0].group_id, Some(1));
@@ -357,11 +346,9 @@ async fn test_group_get_discussion_topics() {
 
     let topics: Vec<_> = group
         .get_discussion_topics()
-        .collect::<Vec<_>>()
+        .collect_all()
         .await
-        .into_iter()
-        .map(|r| r.unwrap())
-        .collect();
+        .unwrap();
     assert_eq!(topics.len(), 1);
     assert_eq!(topics[0].id, 5);
     assert_eq!(topics[0].group_id, Some(1));
@@ -414,11 +401,9 @@ async fn test_group_membership_update() {
 
     let memberships: Vec<_> = group
         .get_memberships()
-        .collect::<Vec<_>>()
+        .collect_all()
         .await
-        .into_iter()
-        .map(|r| r.unwrap())
-        .collect();
+        .unwrap();
     let m = &memberships[0];
     let updated = m
         .update(UpdateMembershipParams {
@@ -451,11 +436,9 @@ async fn test_group_membership_remove_self() {
 
     let memberships: Vec<_> = group
         .get_memberships()
-        .collect::<Vec<_>>()
+        .collect_all()
         .await
-        .into_iter()
-        .map(|r| r.unwrap())
-        .collect();
+        .unwrap();
     memberships[0].remove_self().await.unwrap();
 }
 
@@ -483,11 +466,9 @@ async fn test_course_get_group_categories() {
     let course = canvas.get_course(1).await.unwrap();
     let categories: Vec<_> = course
         .get_group_categories()
-        .collect::<Vec<_>>()
+        .collect_all()
         .await
-        .into_iter()
-        .map(|r| r.unwrap())
-        .collect();
+        .unwrap();
     assert_eq!(categories.len(), 2);
     assert_eq!(categories[0].id, 10);
 }
@@ -549,11 +530,9 @@ async fn test_group_category_update() {
     let course = canvas.get_course(1).await.unwrap();
     let categories: Vec<_> = course
         .get_group_categories()
-        .collect::<Vec<_>>()
+        .collect_all()
         .await
-        .into_iter()
-        .map(|r| r.unwrap())
-        .collect();
+        .unwrap();
     let updated = categories[0]
         .update(GroupCategoryParams {
             name: Some("Updated Category".to_string()),
@@ -591,11 +570,9 @@ async fn test_group_category_delete() {
     let course = canvas.get_course(1).await.unwrap();
     let categories: Vec<_> = course
         .get_group_categories()
-        .collect::<Vec<_>>()
+        .collect_all()
         .await
-        .into_iter()
-        .map(|r| r.unwrap())
-        .collect();
+        .unwrap();
     categories[0].delete().await.unwrap();
 }
 
@@ -629,18 +606,14 @@ async fn test_group_category_get_groups() {
     let course = canvas.get_course(1).await.unwrap();
     let categories: Vec<_> = course
         .get_group_categories()
-        .collect::<Vec<_>>()
+        .collect_all()
         .await
-        .into_iter()
-        .map(|r| r.unwrap())
-        .collect();
+        .unwrap();
     let groups: Vec<_> = categories[0]
         .get_groups()
-        .collect::<Vec<_>>()
+        .collect_all()
         .await
-        .into_iter()
-        .map(|r| r.unwrap())
-        .collect();
+        .unwrap();
     assert_eq!(groups.len(), 2);
 }
 
@@ -710,11 +683,9 @@ async fn test_group_get_tabs() {
 
     let tabs: Vec<_> = group
         .get_tabs()
-        .collect::<Vec<_>>()
+        .collect_all()
         .await
-        .into_iter()
-        .map(|r| r.unwrap())
-        .collect();
+        .unwrap();
     assert_eq!(tabs.len(), 2);
     assert_eq!(tabs[0]["id"], "home");
 }
@@ -734,11 +705,9 @@ async fn test_group_get_content_migrations() {
 
     let migrations: Vec<_> = group
         .get_content_migrations()
-        .collect::<Vec<_>>()
+        .collect_all()
         .await
-        .into_iter()
-        .map(|r| r.unwrap())
-        .collect();
+        .unwrap();
     assert_eq!(migrations.len(), 1);
     assert_eq!(migrations[0]["migration_type"], "common_cartridge_importer");
 }
@@ -758,11 +727,9 @@ async fn test_group_get_content_exports() {
 
     let exports: Vec<_> = group
         .get_content_exports()
-        .collect::<Vec<_>>()
+        .collect_all()
         .await
-        .into_iter()
-        .map(|r| r.unwrap())
-        .collect();
+        .unwrap();
     assert_eq!(exports.len(), 1);
     assert_eq!(exports[0]["export_type"], "common_cartridge");
 }
@@ -799,11 +766,9 @@ async fn test_group_resolve_path() {
 
     let folders: Vec<_> = group
         .resolve_path(None)
-        .collect::<Vec<_>>()
+        .collect_all()
         .await
-        .into_iter()
-        .map(|r| r.unwrap())
-        .collect();
+        .unwrap();
     assert_eq!(folders.len(), 1);
     assert_eq!(folders[0].name.as_deref(), Some("course files"));
 }
@@ -837,18 +802,14 @@ async fn test_group_category_get_users() {
     let course = canvas.get_course(1).await.unwrap();
     let categories: Vec<_> = course
         .get_group_categories()
-        .collect::<Vec<_>>()
+        .collect_all()
         .await
-        .into_iter()
-        .map(|r| r.unwrap())
-        .collect();
+        .unwrap();
     let users: Vec<_> = categories[0]
         .get_users()
-        .collect::<Vec<_>>()
+        .collect_all()
         .await
-        .into_iter()
-        .map(|r| r.unwrap())
-        .collect();
+        .unwrap();
     assert_eq!(users.len(), 2);
     assert_eq!(users[0].id, 42);
 }
@@ -881,11 +842,9 @@ async fn test_group_category_create_group() {
     let course = canvas.get_course(1).await.unwrap();
     let categories: Vec<_> = course
         .get_group_categories()
-        .collect::<Vec<_>>()
+        .collect_all()
         .await
-        .into_iter()
-        .map(|r| r.unwrap())
-        .collect();
+        .unwrap();
     let group = categories[0].create_group("New Group").await.unwrap();
     assert_eq!(group.id, 20);
 }
@@ -920,11 +879,9 @@ async fn test_group_category_assign_members() {
     let course = canvas.get_course(1).await.unwrap();
     let categories: Vec<_> = course
         .get_group_categories()
-        .collect::<Vec<_>>()
+        .collect_all()
         .await
-        .into_iter()
-        .map(|r| r.unwrap())
-        .collect();
+        .unwrap();
     let progress = categories[0].assign_members().await.unwrap();
     assert_eq!(progress.id, 5);
     assert_eq!(progress.workflow_state.as_deref(), Some("queued"));

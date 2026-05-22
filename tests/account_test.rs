@@ -3,7 +3,6 @@ use canvas_lms_api::{
     resources::group::GroupCategoryParams,
     Canvas,
 };
-use futures::StreamExt;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
@@ -60,11 +59,9 @@ async fn test_account_get_subaccounts() {
 
     let subs: Vec<_> = account
         .get_subaccounts()
-        .collect::<Vec<_>>()
+        .collect_all()
         .await
-        .into_iter()
-        .map(|r| r.unwrap())
-        .collect();
+        .unwrap();
     assert_eq!(subs.len(), 2);
     assert_eq!(subs[0].id, 10);
 }
@@ -104,11 +101,9 @@ async fn test_account_get_users() {
 
     let users: Vec<_> = account
         .get_users()
-        .collect::<Vec<_>>()
+        .collect_all()
         .await
-        .into_iter()
-        .map(|r| r.unwrap())
-        .collect();
+        .unwrap();
     assert_eq!(users.len(), 2);
     assert_eq!(users[0].id, 42);
 }
@@ -147,11 +142,9 @@ async fn test_account_get_courses() {
 
     let courses: Vec<_> = account
         .get_courses()
-        .collect::<Vec<_>>()
+        .collect_all()
         .await
-        .into_iter()
-        .map(|r| r.unwrap())
-        .collect();
+        .unwrap();
     assert_eq!(courses.len(), 2);
     assert_eq!(courses[0].id, 1);
 }
@@ -171,11 +164,9 @@ async fn test_account_get_groups() {
 
     let groups: Vec<_> = account
         .get_groups()
-        .collect::<Vec<_>>()
+        .collect_all()
         .await
-        .into_iter()
-        .map(|r| r.unwrap())
-        .collect();
+        .unwrap();
     assert_eq!(groups.len(), 1);
     assert_eq!(groups[0].id, 5);
 }
@@ -195,11 +186,9 @@ async fn test_account_get_group_categories() {
 
     let categories: Vec<_> = account
         .get_group_categories()
-        .collect::<Vec<_>>()
+        .collect_all()
         .await
-        .into_iter()
-        .map(|r| r.unwrap())
-        .collect();
+        .unwrap();
     assert_eq!(categories.len(), 1);
     assert_eq!(categories[0].id, 10);
 }
@@ -243,11 +232,9 @@ async fn test_account_get_admins() {
 
     let admins: Vec<_> = account
         .get_admins()
-        .collect::<Vec<_>>()
+        .collect_all()
         .await
-        .into_iter()
-        .map(|r| r.unwrap())
-        .collect();
+        .unwrap();
     assert_eq!(admins.len(), 1);
 }
 
@@ -286,11 +273,9 @@ async fn test_account_get_authentication_providers() {
 
     let providers: Vec<_> = account
         .get_authentication_providers()
-        .collect::<Vec<_>>()
+        .collect_all()
         .await
-        .into_iter()
-        .map(|r| r.unwrap())
-        .collect();
+        .unwrap();
     assert_eq!(providers.len(), 2);
     assert_eq!(providers[0]["auth_type"], "ldap");
 }
@@ -335,11 +320,9 @@ async fn test_account_get_reports() {
 
     let reports: Vec<_> = account
         .get_reports("student_assignment_outcome_map_csv")
-        .collect::<Vec<_>>()
+        .collect_all()
         .await
-        .into_iter()
-        .map(|r| r.unwrap())
-        .collect();
+        .unwrap();
     assert_eq!(reports.len(), 1);
     assert_eq!(reports[0]["report"], "student_assignment_outcome_map_csv");
 }

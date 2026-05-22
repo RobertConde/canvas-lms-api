@@ -1,5 +1,4 @@
 use canvas_lms_api::Canvas;
-use futures::StreamExt;
 use wiremock::matchers::{method, path, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
@@ -30,8 +29,7 @@ async fn setup(server: &MockServer) -> canvas_lms_api::resources::enrollment::En
 
     let canvas = Canvas::new(&server.uri(), "test-token").unwrap();
     let course = canvas.get_course(1).await.unwrap();
-    let mut stream = course.get_enrollments();
-    stream.next().await.unwrap().unwrap()
+    course.get_enrollments().collect_all().await.unwrap().into_iter().next().unwrap()
 }
 
 #[tokio::test]

@@ -1,5 +1,4 @@
 use canvas_lms_api::{resources::page::UpdatePageParams, Canvas};
-use futures::StreamExt;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
@@ -95,11 +94,9 @@ async fn test_page_get_revisions() {
     let revisions: Vec<_> = page
         .get_revisions()
         .unwrap()
-        .collect::<Vec<_>>()
+        .collect_all()
         .await
-        .into_iter()
-        .map(|r| r.unwrap())
-        .collect();
+        .unwrap();
     assert_eq!(revisions.len(), 2);
     assert_eq!(revisions[0].revision_id, Some(1));
 }

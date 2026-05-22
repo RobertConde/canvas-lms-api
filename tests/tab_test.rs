@@ -1,5 +1,4 @@
 use canvas_lms_api::{resources::tab::UpdateTabParams, Canvas};
-use futures::StreamExt;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
@@ -42,11 +41,9 @@ async fn test_course_tab_update() {
 
     let tabs: Vec<_> = course
         .get_tabs()
-        .collect::<Vec<_>>()
+        .collect_all()
         .await
-        .into_iter()
-        .map(|r| r.unwrap())
-        .collect();
+        .unwrap();
     assert_eq!(tabs.len(), 2);
     assert_eq!(tabs[1].course_id, Some(1));
 
@@ -83,11 +80,9 @@ async fn test_group_tab_update_fails() {
     let course = canvas.get_course(1).await.unwrap();
     let mut tabs: Vec<_> = course
         .get_tabs()
-        .collect::<Vec<_>>()
+        .collect_all()
         .await
-        .into_iter()
-        .map(|r| r.unwrap())
-        .collect();
+        .unwrap();
 
     // Clear course_id to simulate a group tab
     tabs[0].course_id = None;

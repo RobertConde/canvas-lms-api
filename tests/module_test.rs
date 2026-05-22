@@ -2,7 +2,6 @@ use canvas_lms_api::{
     resources::module::{CreateModuleItemParams, UpdateModuleItemParams, UpdateModuleParams},
     Canvas,
 };
-use futures::StreamExt;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
@@ -136,11 +135,9 @@ async fn test_module_get_module_items() {
 
     let items: Vec<_> = module
         .get_module_items()
-        .collect::<Vec<_>>()
+        .collect_all()
         .await
-        .into_iter()
-        .map(|r| r.unwrap())
-        .collect();
+        .unwrap();
     assert_eq!(items.len(), 2);
     assert_eq!(items[0].id, 5);
     assert_eq!(items[0].course_id, Some(1));

@@ -1,5 +1,4 @@
 use canvas_lms_api::{resources::folder::UpdateFolderParams, Canvas};
-use futures::StreamExt;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
@@ -97,11 +96,9 @@ async fn test_folder_get_files() {
     let folder = canvas.get_folder(1).await.unwrap();
     let files: Vec<_> = folder
         .get_files()
-        .collect::<Vec<_>>()
+        .collect_all()
         .await
-        .into_iter()
-        .map(|r| r.unwrap())
-        .collect();
+        .unwrap();
     assert_eq!(files.len(), 1);
     assert_eq!(files[0].id, 10);
 }
@@ -128,11 +125,9 @@ async fn test_folder_get_folders() {
     let folder = canvas.get_folder(1).await.unwrap();
     let subs: Vec<_> = folder
         .get_folders()
-        .collect::<Vec<_>>()
+        .collect_all()
         .await
-        .into_iter()
-        .map(|r| r.unwrap())
-        .collect();
+        .unwrap();
     assert_eq!(subs.len(), 1);
     assert_eq!(subs[0].id, 2);
 }

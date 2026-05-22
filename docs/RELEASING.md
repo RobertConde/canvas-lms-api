@@ -31,9 +31,27 @@ Add a link reference at the bottom of the file:
 - Bump the version in the `[dependencies]` example to match the new release.
 - Update the **Resources covered** section to reflect any new resource types added in this release.
 
-### 4. Verify CI locally
+### 4. Verify CI locally (all matrix configs)
 
-Run each step defined in `.github/workflows/ci.yml` locally. Fix any failures before proceeding.
+The CI matrix runs three separate configurations. You **must** run all three locally and fix any failures before tagging. A failure in any one of them will break CI on the published tag.
+
+```bash
+# 1. Default features (async only)
+cargo test
+cargo clippy -- -D warnings
+
+# 2. Blocking feature, no default features — futures crate is NOT available here
+cargo test --no-default-features --features blocking
+cargo clippy --no-default-features --features blocking -- -D warnings
+
+# 3. Full feature set
+cargo test --features full
+cargo clippy --features full -- -D warnings
+```
+
+Common pitfall: test files that `use futures::StreamExt` or call `.collect::<Vec<_>>().await`
+will compile under `--features full` (which enables `async` and thus `futures`) but fail under
+`--no-default-features --features blocking`. Always use `collect_all().await?` instead.
 
 ### 5. Commit and push
 

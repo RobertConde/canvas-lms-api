@@ -5,7 +5,6 @@ use canvas_lms_api::{
     },
     Canvas,
 };
-use futures::StreamExt;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
@@ -162,11 +161,9 @@ async fn test_quiz_get_questions() {
 
     let questions: Vec<_> = quiz
         .get_questions()
-        .collect::<Vec<_>>()
+        .collect_all()
         .await
-        .into_iter()
-        .map(|r| r.unwrap())
-        .collect();
+        .unwrap();
     assert_eq!(questions.len(), 2);
     assert_eq!(questions[0].id, 10);
     assert_eq!(questions[0].course_id, Some(1));
@@ -221,11 +218,9 @@ async fn test_quiz_get_submissions() {
 
     let subs: Vec<_> = quiz
         .get_submissions()
-        .collect::<Vec<_>>()
+        .collect_all()
         .await
-        .into_iter()
-        .map(|r| r.unwrap())
-        .collect();
+        .unwrap();
     assert_eq!(subs.len(), 2);
     assert_eq!(subs[0].id, 20);
     assert_eq!(subs[0].course_id, Some(1));

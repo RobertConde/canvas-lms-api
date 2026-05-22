@@ -2,7 +2,6 @@ use canvas_lms_api::{
     resources::discussion_topic::{PostEntryParams, UpdateDiscussionParams},
     Canvas,
 };
-use futures::StreamExt;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
@@ -135,11 +134,9 @@ async fn test_discussion_topic_get_topic_entries() {
 
     let entries: Vec<_> = topic
         .get_topic_entries()
-        .collect::<Vec<_>>()
+        .collect_all()
         .await
-        .into_iter()
-        .map(|r| r.unwrap())
-        .collect();
+        .unwrap();
     assert_eq!(entries.len(), 2);
     assert_eq!(entries[0].id, 1);
     assert_eq!(entries[0].user_id, Some(42));
@@ -352,11 +349,9 @@ async fn test_entry_get_replies() {
 
     let replies: Vec<_> = entry
         .get_replies()
-        .collect::<Vec<_>>()
+        .collect_all()
         .await
-        .into_iter()
-        .map(|r| r.unwrap())
-        .collect();
+        .unwrap();
     assert_eq!(replies.len(), 2);
     assert_eq!(replies[0].id, 5);
     assert_eq!(replies[0].message.as_deref(), Some("Reply message 1"));

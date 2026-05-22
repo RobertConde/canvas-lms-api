@@ -1,5 +1,4 @@
 use canvas_lms_api::Canvas;
-use futures::StreamExt;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
@@ -131,11 +130,9 @@ async fn test_course_get_multiple_submissions() {
 
     let subs: Vec<_> = course
         .get_multiple_submissions()
-        .collect::<Vec<_>>()
+        .collect_all()
         .await
-        .into_iter()
-        .map(|r| r.unwrap())
-        .collect();
+        .unwrap();
     assert_eq!(subs.len(), 2);
     assert_eq!(subs[0].id, 10);
     assert_eq!(subs[0].course_id, Some(1));

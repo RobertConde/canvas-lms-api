@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-05-22
+
+### Fixed
+- All integration test files now use `collect_all().await` instead of `futures::StreamExt::collect`
+  so they compile correctly under `--no-default-features --features blocking` (the `futures` crate
+  is not available in that CI configuration).
+- `docs/RELEASING.md` expanded Step 4 to explicitly run all three CI matrix configurations
+  locally before tagging.
+
 ## [0.5.0] - 2026-05-22
 
 ### Added
@@ -213,6 +222,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI: fmt, clippy, tests, doc build, MSRV 1.75 check
 - MIT license
 
+[0.5.1]: https://github.com/RobertConde/canvas-lms-api/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/RobertConde/canvas-lms-api/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/RobertConde/canvas-lms-api/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/RobertConde/canvas-lms-api/compare/v0.2.0...v0.3.0

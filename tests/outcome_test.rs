@@ -299,3 +299,85 @@ async fn test_outcome_import_get_progress() {
     assert_eq!(progress["id"], 7);
     assert_eq!(progress["workflow_state"], "succeeded");
 }
+
+#[tokio::test]
+async fn test_outcome_group_link_new() {
+    let server = MockServer::start().await;
+    let group = setup_outcome_group(&server).await;
+
+    Mock::given(method("POST"))
+        .and(path("/api/v1/courses/1/outcome_groups/10/outcomes"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "context_id": 1,
+            "context_type": "Course",
+            "outcome": {"id": 20, "title": "New Outcome"},
+            "outcome_group": {"id": 10, "context_id": 1, "context_type": "Course"}
+        })))
+        .mount(&server)
+        .await;
+
+    let link = group.link_new("New Outcome", &[]).await.unwrap();
+    assert_eq!(link.outcome.as_ref().and_then(|v| v["id"].as_u64()), Some(20));
+}
+
+#[tokio::test]
+async fn test_outcome_link_get_outcome() {
+    let server = MockServer::start().await;
+    let group = setup_outcome_group(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/outcome_groups/10/outcomes"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([{
+            "context_id": 1,
+            "context_type": "Course",
+            "outcome": {"id": 5, "title": "Linked Outcome"},
+            "outcome_group": {"id": 10, "context_id": 1, "context_type": "Course"}
+        }])))
+        .mount(&server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/api/v1/outcomes/5"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 5,
+            "title": "Linked Outcome"
+        })))
+        .mount(&server)
+        .await;
+
+    let links = group.get_linked_outcomes().collect_all().await.unwrap();
+    let outcome = links[0].get_outcome().await.unwrap();
+    assert_eq!(outcome.id, 5);
+    assert_eq!(outcome.title.as_deref(), Some("Linked Outcome"));
+}
+
+#[tokio::test]
+async fn test_outcome_link_get_outcome_group() {
+    let server = MockServer::start().await;
+    let group = setup_outcome_group(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/outcome_groups/10/outcomes"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([{
+            "context_id": 1,
+            "context_type": "Course",
+            "outcome": {"id": 5, "title": "Linked Outcome"},
+            "outcome_group": {"id": 10, "context_id": 1, "context_type": "Course", "title": "ROOT"}
+        }])))
+        .mount(&server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/outcome_groups/10"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 10,
+            "title": "ROOT",
+            "context_id": 1,
+            "context_type": "Course"
+        })))
+        .mount(&server)
+        .await;
+
+    let links = group.get_linked_outcomes().collect_all().await.unwrap();
+    let og = links[0].get_outcome_group().await.unwrap();
+    assert_eq!(og.id, 10);
+    assert_eq!(og.title.as_deref(), Some("ROOT"));
+}

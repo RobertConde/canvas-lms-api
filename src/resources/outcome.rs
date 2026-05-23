@@ -176,7 +176,7 @@ impl OutcomeGroup {
     /// # Canvas API
     /// `GET /api/v1/accounts/:account_id/outcome_groups/:id/outcomes`
     pub fn get_linked_outcomes(&self) -> PageStream<OutcomeLink> {
-        PageStream::new(
+        PageStream::new_with_injector(
             Arc::clone(self.req()),
             &format!(
                 "{}/outcome_groups/{}/outcomes",
@@ -184,6 +184,10 @@ impl OutcomeGroup {
                 self.id
             ),
             vec![],
+            |mut link: OutcomeLink, req| {
+                link.requester = Some(Arc::clone(&req));
+                link
+            },
         )
     }
 
@@ -192,7 +196,8 @@ impl OutcomeGroup {
     /// # Canvas API
     /// `PUT /api/v1/accounts/:account_id/outcome_groups/:id/outcomes/:outcome_id`
     pub async fn link_outcome(&self, outcome_id: u64) -> Result<OutcomeLink> {
-        self.req()
+        let mut link: OutcomeLink = self
+            .req()
             .put(
                 &format!(
                     "{}/outcome_groups/{}/outcomes/{outcome_id}",
@@ -201,7 +206,9 @@ impl OutcomeGroup {
                 ),
                 &[],
             )
-            .await
+            .await?;
+        link.requester = self.requester.clone();
+        Ok(link)
     }
 
     /// Unlink an outcome from this group.
@@ -209,7 +216,8 @@ impl OutcomeGroup {
     /// # Canvas API
     /// `DELETE /api/v1/accounts/:account_id/outcome_groups/:id/outcomes/:outcome_id`
     pub async fn unlink_outcome(&self, outcome_id: u64) -> Result<OutcomeLink> {
-        self.req()
+        let mut link: OutcomeLink = self
+            .req()
             .delete(
                 &format!(
                     "{}/outcome_groups/{}/outcomes/{outcome_id}",
@@ -218,7 +226,36 @@ impl OutcomeGroup {
                 ),
                 &[],
             )
-            .await
+            .await?;
+        link.requester = self.requester.clone();
+        Ok(link)
+    }
+
+    /// Create a new Outcome and link it into this group.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/accounts/:account_id/outcome_groups/:id/outcomes`
+    /// `POST /api/v1/courses/:course_id/outcome_groups/:id/outcomes`
+    pub async fn link_new(
+        &self,
+        title: &str,
+        params: &[(String, String)],
+    ) -> Result<OutcomeLink> {
+        let mut all_params = vec![("title".to_string(), title.to_string())];
+        all_params.extend_from_slice(params);
+        let mut link: OutcomeLink = self
+            .req()
+            .post(
+                &format!(
+                    "{}/outcome_groups/{}/outcomes",
+                    self.context_path(),
+                    self.id
+                ),
+                &all_params,
+            )
+            .await?;
+        link.requester = self.requester.clone();
+        Ok(link)
     }
 
     /// Import another outcome group into this group.
@@ -244,7 +281,7 @@ impl OutcomeGroup {
 }
 
 /// An association between an outcome and an outcome group.
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, canvas_lms_api_derive::CanvasResource)]
 pub struct OutcomeLink {
     pub context_id: Option<u64>,
     pub context_type: Option<String>,
@@ -253,6 +290,68 @@ pub struct OutcomeLink {
     pub outcome: Option<Value>,
     pub assessed: Option<bool>,
     pub can_unlink: Option<bool>,
+
+    #[serde(skip)]
+    pub(crate) requester: Option<Arc<Requester>>,
+}
+
+impl OutcomeLink {
+    fn outcome_group_context_path(&self) -> String {
+        let group = match &self.outcome_group {
+            Some(g) => g,
+            None => return "global".to_string(),
+        };
+        let context_type = group
+            .get("context_type")
+            .and_then(|v| v.as_str())
+            .unwrap_or("global");
+        let context_id = group.get("context_id").and_then(|v| v.as_u64());
+        match (context_type, context_id) {
+            ("Course", Some(id)) => format!("courses/{id}"),
+            ("Account", Some(id)) => format!("accounts/{id}"),
+            _ => "global".to_string(),
+        }
+    }
+
+    /// Fetch the Outcome associated with this link.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/outcomes/:id`
+    pub async fn get_outcome(&self) -> Result<Outcome> {
+        let outcome_id = self
+            .outcome
+            .as_ref()
+            .and_then(|v| v.get("id"))
+            .and_then(|v| v.as_u64())
+            .expect("OutcomeLink missing outcome id");
+        let mut outcome: Outcome = self
+            .req()
+            .get(&format!("outcomes/{outcome_id}"), &[])
+            .await?;
+        outcome.requester = self.requester.clone();
+        Ok(outcome)
+    }
+
+    /// Fetch the OutcomeGroup that contains this link.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/accounts/:account_id/outcome_groups/:id`
+    /// `GET /api/v1/courses/:course_id/outcome_groups/:id`
+    pub async fn get_outcome_group(&self) -> Result<OutcomeGroup> {
+        let group_id = self
+            .outcome_group
+            .as_ref()
+            .and_then(|v| v.get("id"))
+            .and_then(|v| v.as_u64())
+            .expect("OutcomeLink missing outcome_group id");
+        let context_path = self.outcome_group_context_path();
+        let mut group: OutcomeGroup = self
+            .req()
+            .get(&format!("{context_path}/outcome_groups/{group_id}"), &[])
+            .await?;
+        group.requester = self.requester.clone();
+        Ok(group)
+    }
 }
 
 /// An outcome import job.

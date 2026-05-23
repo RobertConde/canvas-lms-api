@@ -149,6 +149,33 @@ impl CommunicationChannel {
             .unwrap_or(Value::Null))
     }
 
+    /// Update preferences for multiple notifications at once on this channel.
+    ///
+    /// Pass params as `notification_preferences[<notification>][frequency]` keys.
+    ///
+    /// # Canvas API
+    /// `PUT /api/v1/users/self/communication_channels/:id/notification_preferences`
+    pub async fn update_multiple_preferences(
+        &self,
+        params: &[(String, String)],
+    ) -> Result<Vec<Value>> {
+        let data: Value = self
+            .req()
+            .put(
+                &format!(
+                    "users/self/communication_channels/{}/notification_preferences",
+                    self.id
+                ),
+                params,
+            )
+            .await?;
+        Ok(data
+            .get("notification_preferences")
+            .and_then(|v| v.as_array())
+            .cloned()
+            .unwrap_or_default())
+    }
+
     /// Update preferences for all notifications in a category on this channel.
     ///
     /// `frequency` can be `"immediately"`, `"daily"`, `"weekly"`, or `"never"`.

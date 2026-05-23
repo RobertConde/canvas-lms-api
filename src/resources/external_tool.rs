@@ -108,6 +108,20 @@ impl ExternalTool {
         Ok(tool)
     }
 
+    /// Fetch the parent resource (Course or Account) that owns this tool.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id`
+    /// `GET /api/v1/accounts/:account_id`
+    pub async fn get_parent(&self) -> Result<Value> {
+        self.req()
+            .get(
+                &format!("{}s/{}", self.parent_type(), self.parent_id()),
+                &[],
+            )
+            .await
+    }
+
     /// Get the sessionless launch URL for this external tool.
     ///
     /// # Canvas API

@@ -207,3 +207,26 @@ async fn test_column_data_update() {
     assert_eq!(updated.content.as_deref(), Some("New content"));
     assert_eq!(updated.user_id, Some(100));
 }
+
+#[tokio::test]
+async fn test_reorder_custom_columns() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/custom_gradebook_columns"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"id": 1, "title": "Notes", "course_id": 1, "position": 1}
+        ])))
+        .mount(&server)
+        .await;
+    Mock::given(method("POST"))
+        .and(path("/api/v1/courses/1/custom_gradebook_columns/reorder"))
+        .respond_with(ResponseTemplate::new(200))
+        .mount(&server)
+        .await;
+
+    let course = make_course(&server).await;
+    let columns = course.get_custom_columns().collect_all().await.unwrap();
+    let col = &columns[0];
+    col.reorder_custom_columns(&[2, 1]).await.unwrap();
+}

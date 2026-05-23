@@ -209,3 +209,36 @@ async fn test_channel_update_preferences_by_category() {
     assert_eq!(prefs.len(), 2);
     assert_eq!(prefs[0]["frequency"], "never");
 }
+
+#[tokio::test]
+async fn test_channel_update_multiple_preferences() {
+    let server = MockServer::start().await;
+    let channel = make_channel(&server).await;
+
+    Mock::given(method("PUT"))
+        .and(path(
+            "/api/v1/users/self/communication_channels/55/notification_preferences",
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "notification_preferences": [
+                {"notification": "Grade Posted", "frequency": "daily"},
+                {"notification": "Submission Comment", "frequency": "never"}
+            ]
+        })))
+        .mount(&server)
+        .await;
+
+    let params = vec![
+        (
+            "notification_preferences[Grade Posted][frequency]".to_string(),
+            "daily".to_string(),
+        ),
+        (
+            "notification_preferences[Submission Comment][frequency]".to_string(),
+            "never".to_string(),
+        ),
+    ];
+    let prefs = channel.update_multiple_preferences(&params).await.unwrap();
+    assert_eq!(prefs.len(), 2);
+    assert_eq!(prefs[0]["frequency"], "daily");
+}

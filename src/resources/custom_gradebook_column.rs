@@ -99,6 +99,27 @@ impl CustomGradebookColumn {
         Ok(col)
     }
 
+    /// Reorder all custom gradebook columns in this course.
+    ///
+    /// `order` is a slice of column IDs in the desired order.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/courses/:course_id/custom_gradebook_columns/reorder`
+    pub async fn reorder_custom_columns(&self, order: &[u64]) -> Result<()> {
+        let order_str = order
+            .iter()
+            .map(|id| id.to_string())
+            .collect::<Vec<_>>()
+            .join(",");
+        let params = vec![("order".to_string(), order_str)];
+        self.req()
+            .post_void_with_params(
+                &format!("courses/{}/custom_gradebook_columns/reorder", self.course_id()),
+                &params,
+            )
+            .await
+    }
+
     /// Stream all data entries for this custom gradebook column.
     ///
     /// # Canvas API

@@ -826,10 +826,16 @@ impl Account {
     /// # Canvas API
     /// `GET /api/v1/accounts/:id/authentication_providers`
     pub fn get_authentication_providers(&self) -> PageStream<AuthenticationProvider> {
-        PageStream::new(
+        let account_id = self.id;
+        PageStream::new_with_injector(
             Arc::clone(self.req()),
             &format!("accounts/{}/authentication_providers", self.id),
             vec![],
+            move |mut p: AuthenticationProvider, req| {
+                p.requester = Some(Arc::clone(&req));
+                p.account_id = Some(account_id);
+                p
+            },
         )
     }
 
@@ -1184,12 +1190,16 @@ impl Account {
         &self,
         params: &[(String, String)],
     ) -> Result<AuthenticationProvider> {
-        self.req()
+        let mut provider: AuthenticationProvider = self
+            .req()
             .post(
                 &format!("accounts/{}/authentication_providers", self.id),
                 params,
             )
-            .await
+            .await?;
+        provider.requester = self.requester.clone();
+        provider.account_id = Some(self.id);
+        Ok(provider)
     }
 
     /// Fetch a specific authentication provider by ID.
@@ -1200,7 +1210,8 @@ impl Account {
         &self,
         provider_id: u64,
     ) -> Result<AuthenticationProvider> {
-        self.req()
+        let mut provider: AuthenticationProvider = self
+            .req()
             .get(
                 &format!(
                     "accounts/{}/authentication_providers/{provider_id}",
@@ -1208,7 +1219,10 @@ impl Account {
                 ),
                 &[],
             )
-            .await
+            .await?;
+        provider.requester = self.requester.clone();
+        provider.account_id = Some(self.id);
+        Ok(provider)
     }
 
     /// Stream all API token scopes available for this account.

@@ -108,6 +108,39 @@ impl ContentMigration {
             .await
     }
 
+    /// Fetch the parent resource (Course, Account, Group, or User) for this migration.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:id` (or accounts / groups / users)
+    pub async fn get_parent(&self) -> Result<serde_json::Value> {
+        self.req()
+            .get(
+                &format!("{}s/{}", self.parent_type(), self.parent_id()),
+                &[],
+            )
+            .await
+    }
+
+    /// Stream the selective data (content tree) for this migration.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/content_migrations/:id/selective_data`
+    pub fn get_selective_data(
+        &self,
+        params: &[(String, String)],
+    ) -> PageStream<serde_json::Value> {
+        PageStream::new(
+            Arc::clone(self.req()),
+            &format!(
+                "{}s/{}/content_migrations/{}/selective_data",
+                self.parent_type(),
+                self.parent_id(),
+                self.id
+            ),
+            params.to_vec(),
+        )
+    }
+
     /// Update this content migration.
     ///
     /// # Canvas API

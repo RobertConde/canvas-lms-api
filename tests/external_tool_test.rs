@@ -183,3 +183,21 @@ async fn test_external_tool_get_sessionless_launch_url_account() {
         .unwrap();
     assert_eq!(result["name"], "Account Tool");
 }
+
+#[tokio::test]
+async fn test_external_tool_get_parent_course() {
+    let server = MockServer::start().await;
+    let tool = setup_course_tool(&server).await;
+    // setup_course_tool already mounts GET /courses/1 → {"id": 1}
+    let parent = tool.get_parent().await.unwrap();
+    assert_eq!(parent["id"], 1);
+}
+
+#[tokio::test]
+async fn test_external_tool_get_parent_account() {
+    let server = MockServer::start().await;
+    let tool = setup_account_tool(&server).await;
+    // setup_account_tool already mounts GET /accounts/1 → {"id": 1}
+    let parent = tool.get_parent().await.unwrap();
+    assert_eq!(parent["id"], 1);
+}

@@ -696,6 +696,60 @@ async fn test_get_authentication_provider() {
 }
 
 #[tokio::test]
+async fn test_authentication_provider_update() {
+    let server = MockServer::start().await;
+    let account = make_account(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/accounts/1/authentication_providers/3"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 3,
+            "auth_type": "ldap",
+            "position": 1
+        })))
+        .mount(&server)
+        .await;
+    Mock::given(method("PUT"))
+        .and(path("/api/v1/accounts/1/authentication_providers/3"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 3,
+            "auth_type": "ldap",
+            "position": 2
+        })))
+        .mount(&server)
+        .await;
+
+    let provider = account.get_authentication_provider(3).await.unwrap();
+    let params = vec![("position".to_string(), "2".to_string())];
+    let updated = provider.update(&params).await.unwrap();
+    assert_eq!(updated.id, Some(3));
+    assert_eq!(updated.position, Some(2));
+}
+
+#[tokio::test]
+async fn test_authentication_provider_delete() {
+    let server = MockServer::start().await;
+    let account = make_account(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/accounts/1/authentication_providers/3"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 3,
+            "auth_type": "ldap"
+        })))
+        .mount(&server)
+        .await;
+    Mock::given(method("DELETE"))
+        .and(path("/api/v1/accounts/1/authentication_providers/3"))
+        .respond_with(ResponseTemplate::new(204))
+        .mount(&server)
+        .await;
+
+    let provider = account.get_authentication_provider(3).await.unwrap();
+    provider.delete().await.unwrap();
+}
+
+#[tokio::test]
 async fn test_get_scopes() {
     let server = MockServer::start().await;
     let account = make_account(&server).await;

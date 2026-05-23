@@ -206,3 +206,21 @@ async fn test_page_get_parent_course() {
     let parent = page.get_parent().await.unwrap();
     assert_eq!(parent["id"], 1);
 }
+
+#[tokio::test]
+async fn test_page_revision_get_parent_course() {
+    let server = MockServer::start().await;
+    let page = setup_course_page(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/pages/welcome/revisions/1"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(revision_json(1)))
+        .mount(&server)
+        .await;
+
+    let rev = page.get_revision_by_id(1).await.unwrap();
+    assert_eq!(rev.course_id, Some(1));
+
+    let parent = rev.get_parent().await.unwrap();
+    assert_eq!(parent["id"], 1);
+}

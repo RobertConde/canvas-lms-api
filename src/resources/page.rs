@@ -194,7 +194,7 @@ impl Page {
 }
 
 /// A historical revision of a Canvas wiki page.
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, canvas_lms_api_derive::CanvasResource)]
 pub struct PageRevision {
     pub revision_id: Option<u64>,
     pub created_at: Option<DateTime<Utc>>,
@@ -211,4 +211,29 @@ pub struct PageRevision {
     pub course_id: Option<u64>,
     #[serde(skip)]
     pub group_id: Option<u64>,
+}
+
+impl PageRevision {
+    fn parent_prefix(&self) -> crate::error::Result<String> {
+        if let Some(id) = self.course_id {
+            Ok(format!("courses/{id}"))
+        } else if let Some(id) = self.group_id {
+            Ok(format!("groups/{id}"))
+        } else {
+            Err(crate::error::CanvasError::BadRequest {
+                message: "PageRevision missing course_id and group_id".into(),
+                errors: vec![],
+            })
+        }
+    }
+
+    /// Fetch the parent Course or Group that owns this page revision.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:id`
+    /// `GET /api/v1/groups/:id`
+    pub async fn get_parent(&self) -> crate::error::Result<serde_json::Value> {
+        let prefix = self.parent_prefix()?;
+        self.req().get(&prefix, &[]).await
+    }
 }

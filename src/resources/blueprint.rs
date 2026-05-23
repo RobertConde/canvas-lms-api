@@ -113,6 +113,35 @@ impl BlueprintTemplate {
         )
     }
 
+    /// Set or remove restrictions on a blueprint course object.
+    ///
+    /// # Canvas API
+    /// `PUT /api/v1/courses/:course_id/blueprint_templates/:template_id/restrict_item`
+    pub async fn change_blueprint_restrictions(
+        &self,
+        content_type: &str,
+        content_id: u64,
+        restricted: bool,
+    ) -> Result<()> {
+        let params = vec![
+            ("content_type".to_string(), content_type.to_string()),
+            ("content_id".to_string(), content_id.to_string()),
+            ("restricted".to_string(), restricted.to_string()),
+        ];
+        let _: serde_json::Value = self
+            .req()
+            .put(
+                &format!(
+                    "courses/{}/blueprint_templates/{}/restrict_item",
+                    self.course_id(),
+                    self.id
+                ),
+                &params,
+            )
+            .await?;
+        Ok(())
+    }
+
     /// Add or remove associated courses for this blueprint template.
     ///
     /// Pass `course_ids_to_add` and/or `course_ids_to_remove` as flat params.

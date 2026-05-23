@@ -1059,3 +1059,59 @@ async fn test_migration_issue_update() {
     let resolved = issue.update("resolved").await.unwrap();
     assert_eq!(resolved.workflow_state.as_deref(), Some("resolved"));
 }
+
+// ---- BlueprintTemplate::change_blueprint_restrictions ----
+
+#[tokio::test]
+async fn test_blueprint_change_blueprint_restrictions() {
+    let server = MockServer::start().await;
+    let tmpl = make_blueprint(&server).await;
+
+    Mock::given(method("PUT"))
+        .and(path(
+            "/api/v1/courses/1/blueprint_templates/1/restrict_item",
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({})))
+        .mount(&server)
+        .await;
+
+    tmpl.change_blueprint_restrictions("assignment", 42, true)
+        .await
+        .unwrap();
+}
+
+// ---- ContentMigration::get_parent / get_selective_data ----
+
+#[tokio::test]
+async fn test_content_migration_get_parent() {
+    let server = MockServer::start().await;
+    let migration = make_content_migration(&server).await;
+    // make_content_migration already mounts GET /courses/1 → {"id": 1}
+    let parent = migration.get_parent().await.unwrap();
+    assert_eq!(parent["id"], 1);
+}
+
+#[tokio::test]
+async fn test_content_migration_get_selective_data() {
+    let server = MockServer::start().await;
+    let migration = make_content_migration(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path(
+            "/api/v1/courses/1/content_migrations/99/selective_data",
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"type": "course_settings", "label": "Course Settings", "id": "course_settings"},
+            {"type": "assignments", "label": "Assignments", "id": "assignments"}
+        ])))
+        .mount(&server)
+        .await;
+
+    let items = migration
+        .get_selective_data(&[])
+        .collect_all()
+        .await
+        .unwrap();
+    assert_eq!(items.len(), 2);
+    assert_eq!(items[0]["type"], "course_settings");
+}

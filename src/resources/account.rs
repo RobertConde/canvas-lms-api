@@ -11,10 +11,11 @@ use crate::{
         enrollment_term::{EnrollmentTerm, EnrollmentTermParams},
         external_tool::{ExternalTool, ExternalToolParams},
         feature::{Feature, FeatureFlag},
+        grading_period::GradingPeriod,
         grading_standard::{GradingStandard, GradingStandardParams},
         group::{Group, GroupCategory, GroupCategoryParams},
         login::Login,
-        outcome::{OutcomeGroup, OutcomeImport, UpdateOutcomeGroupParams},
+        outcome::{OutcomeGroup, OutcomeImport, OutcomeLink, UpdateOutcomeGroupParams},
         role::{Role, RoleParams},
         rubric::{Rubric, RubricParams},
         sis_import::SisImport,
@@ -1001,5 +1002,355 @@ impl Account {
         login.requester = self.requester.clone();
         login.account_id = Some(self.id);
         Ok(login)
+    }
+
+    // -------------------------------------------------------------------------
+    // v0.8.0 Batch 2 — Missing Account methods
+    // -------------------------------------------------------------------------
+
+    /// Delete this sub-account. Cannot delete a root account or one with active courses.
+    ///
+    /// # Canvas API
+    /// `DELETE /api/v1/accounts/:parent_account_id/sub_accounts/:id`
+    pub async fn delete(&self) -> Result<serde_json::Value> {
+        let parent = self.parent_account_id.unwrap_or(self.id);
+        self.req()
+            .delete(&format!("accounts/{parent}/sub_accounts/{}", self.id), &[])
+            .await
+    }
+
+    /// Stream grading periods for this account.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/accounts/:account_id/grading_periods`
+    pub fn get_grading_periods(&self) -> PageStream<GradingPeriod> {
+        PageStream::new(
+            Arc::clone(self.req()),
+            &format!("accounts/{}/grading_periods", self.id),
+            vec![],
+        )
+    }
+
+    /// Stream all outcome groups in this account context.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/accounts/:account_id/outcome_groups`
+    pub fn get_outcome_groups_in_context(&self) -> PageStream<OutcomeGroup> {
+        let account_id = self.id;
+        PageStream::new_with_injector(
+            Arc::clone(self.req()),
+            &format!("accounts/{account_id}/outcome_groups"),
+            vec![],
+            |mut g: OutcomeGroup, req| {
+                g.requester = Some(Arc::clone(&req));
+                g
+            },
+        )
+    }
+
+    /// Stream all outcome links in this account context.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/accounts/:account_id/outcome_group_links`
+    pub fn get_all_outcome_links_in_context(&self) -> PageStream<OutcomeLink> {
+        PageStream::new(
+            Arc::clone(self.req()),
+            &format!("accounts/{}/outcome_group_links", self.id),
+            vec![],
+        )
+    }
+
+    /// Fetch the root outcome group for this account.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/accounts/:account_id/root_outcome_group`
+    pub async fn get_root_outcome_group(&self) -> Result<OutcomeGroup> {
+        let mut og: OutcomeGroup = self
+            .req()
+            .get(&format!("accounts/{}/root_outcome_group", self.id), &[])
+            .await?;
+        og.requester = self.requester.clone();
+        Ok(og)
+    }
+
+    /// Fetch a single report run by type and ID.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/accounts/:account_id/reports/:report_type/:report_id`
+    pub async fn get_report(
+        &self,
+        report_type: &str,
+        report_id: u64,
+    ) -> Result<serde_json::Value> {
+        self.req()
+            .get(
+                &format!("accounts/{}/reports/{report_type}/{report_id}", self.id),
+                &[],
+            )
+            .await
+    }
+
+    /// Create a global account notification.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/accounts/:account_id/account_notifications`
+    pub async fn create_notification(
+        &self,
+        params: &[(String, String)],
+    ) -> Result<serde_json::Value> {
+        self.req()
+            .post(
+                &format!("accounts/{}/account_notifications", self.id),
+                params,
+            )
+            .await
+    }
+
+    /// Fetch a global notification by ID.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/accounts/:account_id/account_notifications/:id`
+    pub async fn get_global_notification(
+        &self,
+        notification_id: u64,
+    ) -> Result<serde_json::Value> {
+        self.req()
+            .get(
+                &format!(
+                    "accounts/{}/account_notifications/{notification_id}",
+                    self.id
+                ),
+                &[],
+            )
+            .await
+    }
+
+    /// Stream global notifications visible to a specific user.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/accounts/:account_id/users/:user_id/account_notifications`
+    pub fn get_user_notifications(&self, user_id: u64) -> PageStream<serde_json::Value> {
+        PageStream::new(
+            Arc::clone(self.req()),
+            &format!(
+                "accounts/{}/users/{user_id}/account_notifications",
+                self.id
+            ),
+            vec![],
+        )
+    }
+
+    /// Close (dismiss) a notification for a specific user.
+    ///
+    /// # Canvas API
+    /// `DELETE /api/v1/accounts/:account_id/users/:user_id/account_notifications/:id`
+    pub async fn close_notification_for_user(
+        &self,
+        user_id: u64,
+        notification_id: u64,
+    ) -> Result<serde_json::Value> {
+        self.req()
+            .delete(
+                &format!(
+                    "accounts/{}/users/{user_id}/account_notifications/{notification_id}",
+                    self.id
+                ),
+                &[],
+            )
+            .await
+    }
+
+    /// Add (create) an authentication provider for this account.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/accounts/:account_id/authentication_providers`
+    pub async fn add_authentication_provider(
+        &self,
+        params: &[(String, String)],
+    ) -> Result<serde_json::Value> {
+        self.req()
+            .post(
+                &format!("accounts/{}/authentication_providers", self.id),
+                params,
+            )
+            .await
+    }
+
+    /// Fetch a specific authentication provider by ID.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/accounts/:account_id/authentication_providers/:id`
+    pub async fn get_authentication_provider(
+        &self,
+        provider_id: u64,
+    ) -> Result<serde_json::Value> {
+        self.req()
+            .get(
+                &format!(
+                    "accounts/{}/authentication_providers/{provider_id}",
+                    self.id
+                ),
+                &[],
+            )
+            .await
+    }
+
+    /// Stream all API token scopes available for this account.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/accounts/:account_id/scopes`
+    pub fn get_scopes(&self) -> PageStream<serde_json::Value> {
+        PageStream::new(
+            Arc::clone(self.req()),
+            &format!("accounts/{}/scopes", self.id),
+            vec![],
+        )
+    }
+
+    /// Stream course audit log events for this account.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/audit/course/accounts/:account_id`
+    pub fn query_audit_by_account(&self) -> PageStream<serde_json::Value> {
+        PageStream::new(
+            Arc::clone(self.req()),
+            &format!("audit/course/accounts/{}", self.id),
+            vec![],
+        )
+    }
+
+    // ---- Department-level analytics ----
+
+    /// Return grade distribution for all available courses in the default term.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/accounts/:account_id/analytics/current/grades`
+    pub async fn get_department_level_grade_data_current(&self) -> Result<serde_json::Value> {
+        self.req()
+            .get(
+                &format!("accounts/{}/analytics/current/grades", self.id),
+                &[],
+            )
+            .await
+    }
+
+    /// Return grade distribution for all concluded courses in the default term.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/accounts/:account_id/analytics/completed/grades`
+    pub async fn get_department_level_grade_data_completed(&self) -> Result<serde_json::Value> {
+        self.req()
+            .get(
+                &format!("accounts/{}/analytics/completed/grades", self.id),
+                &[],
+            )
+            .await
+    }
+
+    /// Return grade distribution for courses in the given term.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/accounts/:account_id/analytics/terms/:term_id/grades`
+    pub async fn get_department_level_grade_data_with_given_term(
+        &self,
+        term_id: u64,
+    ) -> Result<serde_json::Value> {
+        self.req()
+            .get(
+                &format!("accounts/{}/analytics/terms/{term_id}/grades", self.id),
+                &[],
+            )
+            .await
+    }
+
+    /// Return page view participation data for available courses in the default term.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/accounts/:account_id/analytics/current/activity`
+    pub async fn get_department_level_participation_data_current(
+        &self,
+    ) -> Result<serde_json::Value> {
+        self.req()
+            .get(
+                &format!("accounts/{}/analytics/current/activity", self.id),
+                &[],
+            )
+            .await
+    }
+
+    /// Return page view participation data for concluded courses in the default term.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/accounts/:account_id/analytics/completed/activity`
+    pub async fn get_department_level_participation_data_completed(
+        &self,
+    ) -> Result<serde_json::Value> {
+        self.req()
+            .get(
+                &format!("accounts/{}/analytics/completed/activity", self.id),
+                &[],
+            )
+            .await
+    }
+
+    /// Return page view participation data for courses in the given term.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/accounts/:account_id/analytics/terms/:term_id/activity`
+    pub async fn get_department_level_participation_data_with_given_term(
+        &self,
+        term_id: u64,
+    ) -> Result<serde_json::Value> {
+        self.req()
+            .get(
+                &format!("accounts/{}/analytics/terms/{term_id}/activity", self.id),
+                &[],
+            )
+            .await
+    }
+
+    /// Return numeric statistics for available courses in the default term.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/accounts/:account_id/analytics/current/statistics`
+    pub async fn get_department_level_statistics_current(&self) -> Result<serde_json::Value> {
+        self.req()
+            .get(
+                &format!("accounts/{}/analytics/current/statistics", self.id),
+                &[],
+            )
+            .await
+    }
+
+    /// Return numeric statistics for concluded courses in the default term.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/accounts/:account_id/analytics/completed/statistics`
+    pub async fn get_department_level_statistics_completed(&self) -> Result<serde_json::Value> {
+        self.req()
+            .get(
+                &format!("accounts/{}/analytics/completed/statistics", self.id),
+                &[],
+            )
+            .await
+    }
+
+    /// Return numeric statistics for courses in the given term.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/accounts/:account_id/analytics/terms/:term_id/statistics`
+    pub async fn get_department_level_statistics_with_given_term(
+        &self,
+        term_id: u64,
+    ) -> Result<serde_json::Value> {
+        self.req()
+            .get(
+                &format!(
+                    "accounts/{}/analytics/terms/{term_id}/statistics",
+                    self.id
+                ),
+                &[],
+            )
+            .await
     }
 }

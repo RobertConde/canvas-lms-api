@@ -602,3 +602,58 @@ async fn test_assignment_show_provisional_grades_for_student() {
         .unwrap();
     assert_eq!(result["needs_provisional_grade"], false);
 }
+
+#[tokio::test]
+async fn test_assignment_upload_to_submission() {
+    use canvas_lms_api::upload::UploadRequest;
+
+    let canvas_server = MockServer::start().await;
+    let upload_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({"id": 1})))
+        .mount(&canvas_server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/assignments/2"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(assignment_json(2, 1)))
+        .mount(&canvas_server)
+        .await;
+
+    Mock::given(method("POST"))
+        .and(path("/api/v1/courses/1/assignments/2/submissions/42/files"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "upload_url": format!("{}/s3-upload", upload_server.uri()),
+            "upload_params": {"key": "submissions/file", "Policy": "FAKEPOLICY"}
+        })))
+        .mount(&canvas_server)
+        .await;
+
+    Mock::given(method("POST"))
+        .and(path("/s3-upload"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 88, "display_name": "essay.pdf", "filename": "essay.pdf",
+            "content_type": "application/pdf", "size": 2048
+        })))
+        .mount(&upload_server)
+        .await;
+
+    let canvas = Canvas::new(&canvas_server.uri(), "test-token").unwrap();
+    let course = canvas.get_course(1).await.unwrap();
+    let assignment = course.get_assignment(2).await.unwrap();
+
+    let request = UploadRequest {
+        name: "essay.pdf".to_string(),
+        size: 2048,
+        content_type: Some("application/pdf".to_string()),
+        ..Default::default()
+    };
+
+    let file = assignment
+        .upload_to_submission(42, request, vec![0u8; 2048])
+        .await
+        .unwrap();
+    assert_eq!(file.id, 88);
+    assert_eq!(file.display_name.as_deref(), Some("essay.pdf"));
+}

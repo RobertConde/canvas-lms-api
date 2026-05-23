@@ -376,6 +376,23 @@ impl Quiz {
         r.requester = self.requester.clone();
         Ok(r)
     }
+
+    /// Send a message to unsubmitted or submitted users for this quiz.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/courses/:course_id/quizzes/:id/submission_users/message`
+    pub async fn broadcast_message(&self, params: &[(String, String)]) -> Result<()> {
+        let course_id = self.course_id_or_err()?;
+        self.req()
+            .post_void_with_params(
+                &format!(
+                    "courses/{course_id}/quizzes/{}/submission_users/message",
+                    self.id
+                ),
+                params,
+            )
+            .await
+    }
 }
 
 /// A question within a Canvas quiz.

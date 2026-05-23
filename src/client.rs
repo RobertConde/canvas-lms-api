@@ -994,6 +994,45 @@ impl Canvas {
         e.requester = Some(Arc::clone(&self.requester));
         Ok(e)
     }
+
+    /// Create a new group.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/groups`
+    pub async fn create_group(&self, params: &[(String, String)]) -> Result<Group> {
+        let mut g: Group = self.requester.post("groups", params).await?;
+        g.requester = Some(Arc::clone(&self.requester));
+        Ok(g)
+    }
+
+    /// Create a new root account under the given parent account.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/accounts/:account_id/root_accounts`
+    pub async fn create_account(
+        &self,
+        parent_account_id: u64,
+        params: &[(String, String)],
+    ) -> Result<Account> {
+        let mut a: Account = self
+            .requester
+            .post(&format!("accounts/{parent_account_id}/root_accounts"), params)
+            .await?;
+        a.requester = Some(Arc::clone(&self.requester));
+        Ok(a)
+    }
+
+    /// Get an outcome group by its global id.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/global/outcome_groups/:id`
+    pub async fn get_outcome_group(&self, group_id: u64) -> Result<OutcomeGroup> {
+        let og: OutcomeGroup = self
+            .requester
+            .get(&format!("global/outcome_groups/{group_id}"), &[])
+            .await?;
+        Ok(og)
+    }
 }
 
 fn validate_base_url(raw: &str) -> Result<Url> {

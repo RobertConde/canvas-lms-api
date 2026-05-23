@@ -732,3 +732,63 @@ async fn test_reserve_time_slot_with_participant() {
     let event = canvas.reserve_time_slot(77, Some(99)).await.unwrap();
     assert_eq!(event.id, 201);
 }
+
+#[tokio::test]
+async fn test_create_group() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path("/api/v1/groups"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 55, "name": "Study Group A"
+        })))
+        .mount(&server)
+        .await;
+
+    let canvas = Canvas::new(&server.uri(), "test-token").unwrap();
+    let group = canvas
+        .create_group(&[("name".to_string(), "Study Group A".to_string())])
+        .await
+        .unwrap();
+    assert_eq!(group.id, 55);
+    assert_eq!(group.name.as_deref(), Some("Study Group A"));
+}
+
+#[tokio::test]
+async fn test_create_account() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path("/api/v1/accounts/1/root_accounts"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 200, "name": "New Sub Account"
+        })))
+        .mount(&server)
+        .await;
+
+    let canvas = Canvas::new(&server.uri(), "test-token").unwrap();
+    let account = canvas
+        .create_account(1, &[("account[name]".to_string(), "New Sub Account".to_string())])
+        .await
+        .unwrap();
+    assert_eq!(account.id, 200);
+    assert_eq!(account.name.as_deref(), Some("New Sub Account"));
+}
+
+#[tokio::test]
+async fn test_get_outcome_group() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/global/outcome_groups/7"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 7, "title": "Global Math Standards"
+        })))
+        .mount(&server)
+        .await;
+
+    let canvas = Canvas::new(&server.uri(), "test-token").unwrap();
+    let og = canvas.get_outcome_group(7).await.unwrap();
+    assert_eq!(og.id, 7);
+    assert_eq!(og.title.as_deref(), Some("Global Math Standards"));
+}

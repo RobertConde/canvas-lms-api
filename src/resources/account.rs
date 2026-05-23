@@ -1353,4 +1353,116 @@ impl Account {
             )
             .await
     }
+
+    /// Create a sub-account under this account.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/accounts/:account_id/root_accounts`
+    pub async fn create_account(&self, params: &[(String, String)]) -> Result<Account> {
+        let mut a: Account = self
+            .req()
+            .post(&format!("accounts/{}/root_accounts", self.id), params)
+            .await?;
+        a.requester = self.requester.clone();
+        Ok(a)
+    }
+
+    /// Delete an account report run.
+    ///
+    /// # Canvas API
+    /// `DELETE /api/v1/accounts/:account_id/reports/:report_type/:id`
+    pub async fn delete_report(
+        &self,
+        report_type: &str,
+        report_id: u64,
+    ) -> Result<serde_json::Value> {
+        self.req()
+            .delete(
+                &format!("accounts/{}/reports/{report_type}/{report_id}", self.id),
+                &[],
+            )
+            .await
+    }
+
+    /// List all runs of a given report type for this account.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/accounts/:account_id/reports/:report_type`
+    pub fn get_index_of_reports(&self, report_type: &str) -> PageStream<serde_json::Value> {
+        let url = format!("accounts/{}/reports/{report_type}", self.id);
+        PageStream::new(Arc::clone(self.req()), &url, vec![])
+    }
+
+    /// Get the current SSO settings for this account.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/accounts/:account_id/sso_settings`
+    pub async fn show_account_auth_settings(&self) -> Result<serde_json::Value> {
+        self.req()
+            .get(&format!("accounts/{}/sso_settings", self.id), &[])
+            .await
+    }
+
+    /// Update the SSO settings for this account.
+    ///
+    /// # Canvas API
+    /// `PUT /api/v1/accounts/:account_id/sso_settings`
+    pub async fn update_account_auth_settings(
+        &self,
+        params: &[(String, String)],
+    ) -> Result<serde_json::Value> {
+        self.req()
+            .put(&format!("accounts/{}/sso_settings", self.id), params)
+            .await
+    }
+
+    /// Update visibility of a single account calendar.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/accounts/:account_id/account_calendars/:calendar_id`
+    pub async fn update_account_calendar_visibility(
+        &self,
+        calendar_id: u64,
+        params: &[(String, String)],
+    ) -> Result<serde_json::Value> {
+        self.req()
+            .post(
+                &format!("accounts/{}/account_calendars/{calendar_id}", self.id),
+                params,
+            )
+            .await
+    }
+
+    /// Update visibility of multiple account calendars at once.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/accounts/:account_id/account_calendars`
+    pub async fn update_many_account_calendars_visibility(
+        &self,
+        params: &[(String, String)],
+    ) -> Result<serde_json::Value> {
+        self.req()
+            .post(&format!("accounts/{}/account_calendars", self.id), params)
+            .await
+    }
+
+    /// Update a global notification.
+    ///
+    /// # Canvas API
+    /// `PUT /api/v1/accounts/:account_id/account_notifications/:id`
+    pub async fn update_global_notification(
+        &self,
+        notification_id: u64,
+        params: &[(String, String)],
+    ) -> Result<serde_json::Value> {
+        self.req()
+            .put(
+                &format!(
+                    "accounts/{}/account_notifications/{notification_id}",
+                    self.id
+                ),
+                params,
+            )
+            .await
+    }
 }

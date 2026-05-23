@@ -4,6 +4,7 @@ use crate::{
     pagination::PageStream,
     params::wrap_params,
     resources::{progress::Progress, submission::Submission, user::User},
+    upload::{initiate_and_upload, UploadRequest},
 };
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -509,6 +510,29 @@ impl Assignment {
             .await?;
         p.requester = self.requester.clone();
         Ok(p)
+    }
+
+    /// Upload a file to a submission for this assignment (two-step Canvas upload).
+    ///
+    /// `user_id` is the submitting user's Canvas id; pass `0` to use `"self"` is not
+    /// supported here — provide the numeric id.
+    ///
+    /// # Canvas API
+    /// Step 1: `POST /api/v1/courses/:c/assignments/:a/submissions/:u/files`
+    /// Step 2: POST multipart to the returned upload URL
+    pub async fn upload_to_submission(
+        &self,
+        user_id: u64,
+        request: UploadRequest,
+        data: Vec<u8>,
+    ) -> Result<crate::resources::file::File> {
+        let course_id = self.course_id.ok_or_else(|| CanvasError::BadRequest {
+            message: "Assignment has no course_id".to_string(),
+            errors: vec![],
+        })?;
+        let endpoint =
+            format!("courses/{course_id}/assignments/{}/submissions/{user_id}/files", self.id);
+        initiate_and_upload(self.req(), &endpoint, request, data).await
     }
 }
 

@@ -904,3 +904,167 @@ async fn test_get_department_level_statistics_with_given_term() {
         .unwrap();
     assert_eq!(result["courses"], 30);
 }
+
+#[tokio::test]
+async fn test_account_create_account() {
+    let server = MockServer::start().await;
+    let account = make_account(&server).await;
+
+    Mock::given(method("POST"))
+        .and(path("/api/v1/accounts/1/root_accounts"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 99, "name": "Sub Account"
+        })))
+        .mount(&server)
+        .await;
+
+    let sub = account
+        .create_account(&[("account[name]".to_string(), "Sub Account".to_string())])
+        .await
+        .unwrap();
+    assert_eq!(sub.id, 99);
+    assert_eq!(sub.name.as_deref(), Some("Sub Account"));
+}
+
+#[tokio::test]
+async fn test_account_delete_report() {
+    let server = MockServer::start().await;
+    let account = make_account(&server).await;
+
+    Mock::given(method("DELETE"))
+        .and(path("/api/v1/accounts/1/reports/sis_export_csv/7"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 7, "status": "deleted"
+        })))
+        .mount(&server)
+        .await;
+
+    let result = account.delete_report("sis_export_csv", 7).await.unwrap();
+    assert_eq!(result["id"], 7);
+}
+
+#[tokio::test]
+async fn test_account_get_index_of_reports() {
+    let server = MockServer::start().await;
+    let account = make_account(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/accounts/1/reports/sis_export_csv"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"id": 1, "status": "complete"},
+            {"id": 2, "status": "running"}
+        ])))
+        .mount(&server)
+        .await;
+
+    let reports: Vec<_> = account
+        .get_index_of_reports("sis_export_csv")
+        .collect_all()
+        .await
+        .unwrap();
+    assert_eq!(reports.len(), 2);
+}
+
+#[tokio::test]
+async fn test_account_show_account_auth_settings() {
+    let server = MockServer::start().await;
+    let account = make_account(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/accounts/1/sso_settings"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "sso_settings": {"login_handle_name": "Email"}
+        })))
+        .mount(&server)
+        .await;
+
+    let result = account.show_account_auth_settings().await.unwrap();
+    assert!(result["sso_settings"].is_object());
+}
+
+#[tokio::test]
+async fn test_account_update_account_auth_settings() {
+    let server = MockServer::start().await;
+    let account = make_account(&server).await;
+
+    Mock::given(method("PUT"))
+        .and(path("/api/v1/accounts/1/sso_settings"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "sso_settings": {"login_handle_name": "Username"}
+        })))
+        .mount(&server)
+        .await;
+
+    let result = account
+        .update_account_auth_settings(&[(
+            "sso_settings[login_handle_name]".to_string(),
+            "Username".to_string(),
+        )])
+        .await
+        .unwrap();
+    assert_eq!(result["sso_settings"]["login_handle_name"], "Username");
+}
+
+#[tokio::test]
+async fn test_account_update_account_calendar_visibility() {
+    let server = MockServer::start().await;
+    let account = make_account(&server).await;
+
+    Mock::given(method("POST"))
+        .and(path("/api/v1/accounts/1/account_calendars/42"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 42, "visible": true
+        })))
+        .mount(&server)
+        .await;
+
+    let result = account
+        .update_account_calendar_visibility(42, &[("visible".to_string(), "true".to_string())])
+        .await
+        .unwrap();
+    assert_eq!(result["id"], 42);
+}
+
+#[tokio::test]
+async fn test_account_update_many_account_calendars_visibility() {
+    let server = MockServer::start().await;
+    let account = make_account(&server).await;
+
+    Mock::given(method("POST"))
+        .and(path("/api/v1/accounts/1/account_calendars"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "count": 3
+        })))
+        .mount(&server)
+        .await;
+
+    let result = account
+        .update_many_account_calendars_visibility(&[("visible".to_string(), "true".to_string())])
+        .await
+        .unwrap();
+    assert_eq!(result["count"], 3);
+}
+
+#[tokio::test]
+async fn test_account_update_global_notification() {
+    let server = MockServer::start().await;
+    let account = make_account(&server).await;
+
+    Mock::given(method("PUT"))
+        .and(path("/api/v1/accounts/1/account_notifications/5"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 5, "subject": "Updated Notice", "message": "Hello"
+        })))
+        .mount(&server)
+        .await;
+
+    let result = account
+        .update_global_notification(
+            5,
+            &[("account_notification[subject]".to_string(), "Updated Notice".to_string())],
+        )
+        .await
+        .unwrap();
+    assert_eq!(result["id"], 5);
+    assert_eq!(result["subject"], "Updated Notice");
+}

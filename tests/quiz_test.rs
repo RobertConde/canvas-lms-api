@@ -748,3 +748,24 @@ async fn test_quiz_submission_question_unflag() {
     assert_eq!(unflagged.id, Some(100));
     assert_eq!(unflagged.flagged, Some(false));
 }
+
+#[tokio::test]
+async fn test_quiz_broadcast_message() {
+    let server = MockServer::start().await;
+    let quiz = setup(&server).await;
+
+    Mock::given(method("POST"))
+        .and(path(
+            "/api/v1/courses/1/quizzes/5/submission_users/message",
+        ))
+        .respond_with(ResponseTemplate::new(201))
+        .mount(&server)
+        .await;
+
+    quiz.broadcast_message(&[
+        ("conversations[body]".to_string(), "Please submit your quiz.".to_string()),
+        ("conversations[recipients][]".to_string(), "unsubmitted".to_string()),
+    ])
+    .await
+    .unwrap();
+}

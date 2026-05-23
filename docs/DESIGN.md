@@ -462,114 +462,119 @@ Tests: extend `tests/account_test.rs`
 | 5 | Login resource: new `src/resources/login.rs` with `edit`, `delete`, `get_authentication_events`; `Account::get_user_logins`, `create_user_login`; `tests/login_test.rs` (5 tests) |
 | 6 | `ExternalTool::get_sessionless_launch_url` (2 tests); `OutcomeImport` struct + `get_progress`; `Account::import_outcomes`; `Course::import_outcomes`, `get_outcome_import_status` (4 tests) |
 
-### v0.8.0 — Plan
+### v0.8.0 (shipped) ✓
 
-Goals: fill Account test gaps + missing methods; add missing Course methods; implement Rubric resource; fill Group/User remaining depth; add Login resource; tighten ExternalTool and OutcomeImport.
+**634 tests, 0 failures.** All three CI matrix configs clean.
 
-#### Batch 1 — Account: test coverage + missing methods
-
-Python ref: `tests/test_account.py`
-
-**Add tests** for already-implemented Account methods that currently have no test coverage:
-- Content exports: `get_content_export`, `get_content_exports`, `create_content_export`
-- Content migrations: `get_content_migration`, `get_content_migrations`, `create_content_migration`, `get_migrators`
-- Enrollment terms: `get_enrollment_term`, `get_enrollment_terms`, `create_enrollment_term`
-- External tools: `get_external_tool`, `get_external_tools`, `create_external_tool`
-- Feature flags: `get_feature_flag`, `get_features`
-- Grading standards: `get_grading_standard`, `get_grading_standards`
-- Outcome groups: `get_outcome_group`, `get_outcome_group_links`
-- Roles: `get_role`, `get_roles`, `update_role`
-- SIS imports: `get_sis_import`, `get_sis_imports`, `get_sis_imports_running`
-
-**Add missing Account methods** (not yet in Rust):
-- `create_course(params)` → `POST /api/v1/accounts/:id/courses` → `Course`
-- `create_sis_import(params)` → `POST /api/v1/accounts/:id/sis_imports` → `SisImport`
-- `delete_admin(user_id)` → `DELETE /api/v1/accounts/:id/admins/:user_id` → `Value`
-- `delete_grading_period(id)` → `DELETE /api/v1/accounts/:id/grading_periods/:id` → `()`
-- `get_enrollment(id)` → `GET /api/v1/accounts/:id/enrollments/:id` → `Enrollment`
-- `get_authentication_events()` → `GET /api/v1/audit/authentication/accounts/:id` → `PageStream<Value>`
-
-#### Batch 2 — Course: missing methods
-
-Python ref: `tests/test_course.py`
-
-Add to `src/resources/course.rs` (all need tests in `tests/course_extra_test.rs` or new `course_methods2_test.rs`):
-
-- **Front page**: `show_front_page()` → `GET .../front_page` → `Page`; `edit_front_page(params)` → `PUT`
-- **Content**: `export_content(type)`, `get_full_discussion_topic(id)`, `preview_html(html)`, `reorder_pinned_topics(order)`
-- **Users**: `get_user(id)` → `GET .../users/:id`; `get_recent_students()`
-- **Files/rights**: `upload_file(request, data)` (two-step, same pattern as Group); `set_usage_rights(params)`; `remove_usage_rights(params)`; `get_licenses()`
-- **External feeds**: `get_external_feeds()`, `create_external_feed(url)`, `delete_external_feed(id)`
-- **Sections**: `create_course_section(name)` → `POST .../sections` → `Section`
-
-#### Batch 3 — Rubric resource (entirely new)
-
-Python ref: `tests/test_rubric.py`
-
-New `Rubric` and `RubricAssociation` structs in `src/resources/rubric.rs`. Fields: `id`, `title`, `context_id`, `context_type`, `points_possible`, `reusable`, `read_only`, `free_form_criterion_comments`, `hide_score_total`, `data` (criteria array).
-
-`RubricAssociation` methods: `update(params)`, `delete()`.
-
-Add to `Account`: `get_rubric(id)`, `get_rubrics()`.
-Add to `Course`: `get_rubric(id)`, `get_rubrics()`, `create_rubric(params)`, `create_rubric_association(params)`, `get_rubric_association(id)`, `get_rubric_associations()`.
-
-Note: `create_rubric` response envelope is `{"rubric": {...}, "rubric_association": {...}}` — extract `rubric` key.
-
-Tests: `tests/rubric_test.rs` (target: ~12 tests)
-
-#### Batch 4 — Group + User remaining gaps
-
-Python refs: `tests/test_group.py`, `tests/test_user.py`
-
-**Group** (add to `src/resources/group.rs`):
-- `create_content_migration(migration_type)`, `get_content_migration(id)`, `get_migration_systems()`
-- `export_content(type)`, `get_content_export(id)`
-- `get_full_discussion_topic(id)`, `get_activity_stream_summary()`, `reorder_pinned_topics(order)`
-
-**User** (add to `src/resources/user.rs`):
-- `add_observee_with_credentials(params)` — same endpoint as `add_observee` but sends credentials
-- `get_calendar_events(params)` → `GET /api/v1/users/:id/calendar_events`
-- `get_content_export(id)`, `get_licenses()`
-- `set_usage_rights(params)`, `remove_usage_rights(params)`
-
-#### Batch 5 — Login resource (entirely new)
-
-Python ref: `tests/test_login.py`
-
-New `Login` struct in `src/resources/login.rs`. Fields: `id`, `account_id`, `user_id`, `workflow_state`, `unique_id`, `sis_user_id`, `integration_id`, `authentication_provider_id`.
-
-`Login` methods:
-- `edit(params)` → `PUT /api/v1/accounts/:account_id/logins/:id` → `Login`
-- `delete()` → `DELETE /api/v1/accounts/:account_id/logins/:id` → `()`
-
-Add to `Account`:
-- `get_user_logins(user_id)` → `GET /api/v1/accounts/:id/logins?user_id=:user_id` → `PageStream<Login>`
-- `create_user_login(params)` → `POST /api/v1/accounts/:id/logins` → `Login`
-
-`Login` needs `account_id` injected at call sites so its instance methods can form the URL.
-
-Tests: `tests/login_test.rs` (target: ~6 tests)
-
-#### Batch 6 — ExternalTool sessionless launch + OutcomeImport
-
-Python refs: `tests/test_external_tool.py`, `tests/test_outcome_import.py`
-
-**ExternalTool**:
-- `get_sessionless_launch_url(params)` → `GET /api/v1/:context/external_tools/sessionless_launch`
-  Uses existing `context_type` + `context_id` fields. Returns `Value`.
-
-**OutcomeImport** (formalize the existing raw-JSON approach):
-- New `OutcomeImport` struct with `id`, `account_id`, `course_id`, `workflow_state`, `progress`.
-- `OutcomeImport::get_progress()` → `GET /api/v1/:context/outcome_imports/:id`
-- Add `Account::import_outcomes(params)` → `POST /api/v1/accounts/:id/outcome_imports` → `OutcomeImport`
-- Add `Course::import_outcomes(params)` + `Course::get_outcome_import_status(id)` → `OutcomeImport`
-
-Tests: extend `tests/external_tool_test.rs`; extend `tests/outcome_test.rs` or new `tests/outcome_import_test.rs`
+| Batch | What was delivered |
+|---|---|
+| 1 | Canvas client: 25 missing top-level methods — `get_group_category`, `get_account_calendars`, `get_root_outcome_group`, `get_announcements`, `search_accounts/all_courses/recipients`, `get_activity_stream_summary`, `get_todo_items`, `get_upcoming_events`, `get_course_accounts`, course nickname CRUD, `get_epub_exports`, `get_brand_variables`, `get_comm_messages`, conversations batch ops, appointment group participants, `reserve_time_slot`; +26 tests |
+| 2 | Account: 22 missing methods — `delete`, `get_grading_periods`, `get_outcome_groups_in_context`, `get_all_outcome_links_in_context`, `get_root_outcome_group`, `get_report`, `create_notification`, `get_global_notification`, `get_user_notifications`, `close_notification_for_user`, `add_authentication_provider`, `get_authentication_provider`, `get_scopes`, `query_audit_by_account`, analytics grade/participation/statistics endpoints; +20 tests |
+| 3 | Course: 21 missing methods — `get_single_grading_standard`, assignment override CRUD, `get_assignments_for_group`, `get_all_outcome_links_in_context`, `get_todo_items`, epub export, `column_data_bulk_update`, `query_audit_by_course`, analytics endpoints, `smartsearch`, `get_quiz_overrides`, `set_quiz_extensions`, `set_new_quizzes_accommodations`; +21 tests |
+| 4 | Typed `PeerReview` struct replacing `Value` returns on peer review methods; `Submission::upload_comment` (two-step file upload to comment); +3 tests |
+| 5 | `DiscussionTopic::get_parent()`, `User::get_assignments(course_id)`, `User::moderate_all_eportfolios()`; +3 tests |
 
 ---
 
+> **Cross-check vs `canvasapi` (performed 2026-05-23):** The following analysis compares every public Python method to the current Rust implementation. Methods with naming differences that map to the same endpoint are counted as present (e.g., `get_migrators` ↔ `get_migration_systems`, `upload_file` ↔ `upload`, `create_grading_standard` ↔ `add_grading_standards`).
+
+### v0.9.0 — Method Parity Gaps
+
+Goals: close all confirmed method gaps found by cross-check; add typed structs for resources currently returning `serde_json::Value`.
+
+#### Missing methods by resource
+
+**Canvas client (`src/client.rs`) — 3 missing**
+
+| Method | Endpoint | Return |
+|--------|----------|--------|
+| `create_account(params)` | `POST /api/v1/accounts/:account_id/root_accounts` | `Account` |
+| `create_group(params)` | `POST /api/v1/groups` | `Group` |
+| `get_outcome_group(id)` | `GET /api/v1/global/outcome_groups/:id` | `OutcomeGroup` |
+
+**Account (`src/resources/account.rs`) — 8 missing**
+
+| Method | Endpoint | Return |
+|--------|----------|--------|
+| `create_account(params)` | `POST /api/v1/accounts/:id/root_accounts` | `Account` |
+| `delete_report(report_type, report_id)` | `DELETE /api/v1/accounts/:id/reports/:type/:id` | `Value` |
+| `get_index_of_reports(report_type)` | `GET /api/v1/accounts/:id/reports/:type` | `PageStream<Value>` |
+| `show_account_auth_settings()` | `GET /api/v1/accounts/:id/sso_settings` | `Value` |
+| `update_account_auth_settings(params)` | `PUT /api/v1/accounts/:id/sso_settings` | `Value` |
+| `update_account_calendar_visibility(calendar_id, params)` | `POST /api/v1/accounts/:id/account_calendars/:id` | `Value` |
+| `update_global_notification(notif_id, params)` | `PUT /api/v1/accounts/:id/account_notifications/:id` | `Value` |
+| `update_many_account_calendars_visibility(params)` | `POST /api/v1/accounts/:id/account_calendars` | `Value` |
+
+**Course (`src/resources/course.rs`) — 15 missing**
+
+| Method | Endpoint | Return |
+|--------|----------|--------|
+| `create_folder(name, params)` | `POST /api/v1/courses/:id/folders` | `Folder` |
+| `create_late_policy(params)` | `POST /api/v1/courses/:id/late_policy` | `Value` |
+| `create_page(params)` | `POST /api/v1/courses/:id/pages` | `Page` |
+| `edit_late_policy(params)` | `PATCH /api/v1/courses/:id/late_policy` | `()` |
+| `get_assignment_group(group_id)` | `GET /api/v1/courses/:id/assignment_groups/:id` | `AssignmentGroup` |
+| `get_file(file_id)` | `GET /api/v1/courses/:id/files/:id` | `File` |
+| `get_file_quota()` | `GET /api/v1/courses/:id/files/quota` | `Value` |
+| `get_folder(folder_id)` | `GET /api/v1/courses/:id/folders/:id` | `Folder` |
+| `get_folders()` | `GET /api/v1/courses/:id/folders` | `PageStream<Folder>` |
+| `get_grading_period(period_id)` | `GET /api/v1/courses/:id/grading_periods/:id` | `GradingPeriod` |
+| `get_outcome_groups_in_context()` | `GET /api/v1/courses/:id/outcome_groups` | `PageStream<OutcomeGroup>` |
+| `get_outcome_result_rollups()` | `GET /api/v1/courses/:id/outcome_rollups` | `Value` (BETA) |
+| `get_outcome_results()` | `GET /api/v1/courses/:id/outcome_results` | `PageStream<Value>` (BETA) |
+| `remove_nickname()` | `DELETE /api/v1/users/self/course_nicknames/:id` | `Value` |
+| `resolve_path(full_path)` | `GET /api/v1/courses/:id/folders/by_path[/:path]` | `PageStream<Folder>` |
+
+**Assignment (`src/resources/assignment.rs`) — 1 missing**
+
+| Method | Endpoint | Return |
+|--------|----------|--------|
+| `upload_to_submission(file, user_id)` | `POST /api/v1/courses/:c/assignments/:a/submissions/:u/files` (two-step) | `File` |
+
+**Quiz (`src/resources/quiz.rs`) — 1 missing**
+
+| Method | Endpoint | Return |
+|--------|----------|--------|
+| `broadcast_message(params)` | `POST /api/v1/courses/:c/quizzes/:id/submission_users/message` | `()` |
+
+**Resources at full parity:** `Submission`, `Section`, `Module`, `ModuleItem`, `Page`, `Enrollment`, `Group`, `User`, `Tab`, `DiscussionTopic`, `DiscussionEntry`
+
+#### Resources to type (currently `Value`)
+
+| Resource | Fields | Where used |
+|----------|--------|------------|
+| `ExternalFeed` | `id`, `url`, `verbosity`, `header_match`, `created_at`, `display_name` | `Course`, `Group` |
+| `License` | `id`, `name`, `url` | `Course`, `Group`, `User` |
+| `UsageRights` | `use_justification`, `license`, `license_name`, `message`, `freely_available` | `Course`, `Group`, `User` |
+| `PageView` | `id`, `url`, `context_type`, `action`, `created_at`, `remote_ip` | `User` |
+| `PairingCode` | `user_id`, `code`, `expires_at`, `workflow_state` | `User` |
+| `AuthenticationEvent` | `created_at`, `event_type`, `pseudonym_id`, `user_id` | `Account`, `Login`, `User` |
+| `AuthenticationProvider` | `id`, `auth_type`, `position`, `identifier_format` | `Account` |
+
+#### Entirely new resource structs
+
+| Resource | Key methods | Python ref |
+|----------|-------------|------------|
+| `AccountNotification` | data struct only (returned by `get_global_notification`) | `account.py` |
+| `CommMessage` | data struct only (returned by `Canvas::get_comm_messages`) | `comm_message.py` |
+| `CourseEpubExport` | `download()` | `course_epub_export.py` |
+| `CourseEvent` | data struct only (course audit log) | `course_event.py` |
+| `ExternalFeed` | `delete()` | `external_feed.py` |
+| `Favorite` | `remove()` | `favorite.py` |
+| `NotificationPreference` | data struct only | `notification_preference.py` |
+| `Scope` | data struct only | `scope.py` |
+| `Todo` | `delete()` | `todo.py` |
+
+Lower priority: `Bookmark`, `SearchResult` — thin APIs with limited real-world use.
+
 ### v1.0.0
-Full API surface. Semver stability guarantee. MSRV policy pinned to N-2 stable.
+Full API surface parity with `canvasapi`. Semver stability guarantee. MSRV policy pinned to N-2 stable.
+
+**Gate criteria:**
+- All methods in `canvasapi/canvas.py`, `account.py`, `course.py`, `group.py`, `user.py`, `assignment.py`, `quiz.py`, `submission.py`, `discussion_topic.py`, `section.py`, `module.py`, `page.py`, `enrollment.py`, `tab.py` are implemented and have wiremock tests
+- All resource types that carry instance methods in Python have a typed Rust struct (not `Value`)
+- `cargo doc` generates no warnings; every public item has a doc comment with `# Canvas API` endpoint citation
+- All three CI matrix configs pass clean
 
 ---
 

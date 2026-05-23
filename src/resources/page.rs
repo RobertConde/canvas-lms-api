@@ -81,6 +81,15 @@ impl Page {
         rev.group_id = self.group_id;
     }
 
+    /// Fetch the parent Course or Group that owns this page.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:id` or `GET /api/v1/groups/:id`
+    pub async fn get_parent(&self) -> Result<serde_json::Value> {
+        let prefix = self.parent_prefix()?;
+        self.req().get(&prefix, &[]).await
+    }
+
     /// Update this page's title, body, or settings.
     ///
     /// # Canvas API

@@ -480,4 +480,21 @@ impl DiscussionEntry {
             )
             .await
     }
+
+    /// Fetch the parent DiscussionTopic for this entry.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/discussion_topics/:id` or groups variant
+    pub async fn get_discussion(&self) -> Result<DiscussionTopic> {
+        let prefix = self.parent_prefix()?;
+        let topic_id = self.topic_id_or_err()?;
+        let mut topic: DiscussionTopic = self
+            .req()
+            .get(&format!("{prefix}/discussion_topics/{topic_id}"), &[])
+            .await?;
+        topic.requester = self.requester.clone();
+        topic.course_id_ctx = self.course_id;
+        topic.group_id = self.group_id;
+        Ok(topic)
+    }
 }

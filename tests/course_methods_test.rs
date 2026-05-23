@@ -1668,3 +1668,23 @@ async fn test_course_resolve_path() {
     assert_eq!(folders.len(), 3);
     assert_eq!(folders[2].name.as_deref(), Some("week1"));
 }
+
+#[tokio::test]
+async fn test_course_get_migration_systems() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/content_migrations/migrators"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"type": "course_copy_importer", "name": "Copy a Canvas Course", "requires_file_upload": false},
+            {"type": "zip_file_importer", "name": "Unzip .zip file into folder", "requires_file_upload": true}
+        ])))
+        .mount(&server)
+        .await;
+
+    let migrators = course.get_migration_systems().collect_all().await.unwrap();
+    assert_eq!(migrators.len(), 2);
+    assert_eq!(migrators[0].r#type.as_deref(), Some("course_copy_importer"));
+    assert_eq!(migrators[1].requires_file_upload, Some(true));
+}

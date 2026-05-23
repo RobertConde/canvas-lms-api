@@ -1068,3 +1068,22 @@ async fn test_account_update_global_notification() {
     assert_eq!(result["id"], 5);
     assert_eq!(result["subject"], "Updated Notice");
 }
+
+#[tokio::test]
+async fn test_account_get_migration_systems() {
+    let server = MockServer::start().await;
+    let account = make_account(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/accounts/1/content_migrations/migrators"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"type": "course_copy_importer", "name": "Copy a Canvas Course", "requires_file_upload": false},
+            {"type": "canvas_cartridge_importer", "name": "Canvas Course Export Package", "requires_file_upload": true}
+        ])))
+        .mount(&server)
+        .await;
+
+    let migrators = account.get_migration_systems().collect_all().await.unwrap();
+    assert_eq!(migrators.len(), 2);
+    assert_eq!(migrators[0].r#type.as_deref(), Some("course_copy_importer"));
+}

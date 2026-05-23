@@ -150,7 +150,9 @@ impl Canvas {
     /// # Canvas API
     /// `GET /api/v1/users/self`
     pub async fn get_current_user(&self) -> Result<CurrentUser> {
-        self.requester.get("users/self", &[]).await
+        let mut u: CurrentUser = self.requester.get("users/self", &[]).await?;
+        u.requester = Some(Arc::clone(&self.requester));
+        Ok(u)
     }
 
     /// Create a new user under an account.

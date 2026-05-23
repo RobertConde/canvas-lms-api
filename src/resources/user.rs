@@ -6,12 +6,16 @@ use crate::{
     resources::{
         assignment::Assignment,
         authentication_event::AuthenticationEvent,
+        bookmark::Bookmark,
+        calendar_event::CalendarEvent,
         communication_channel::CommunicationChannel,
         content_migration::{ContentMigration, Migrator},
         course::Course,
         enrollment::Enrollment,
+        favorite::Favorite,
         file::File,
         folder::Folder,
+        group::Group,
         license::License,
         page_view::PageView,
         pairing_code::PairingCode,
@@ -784,10 +788,27 @@ impl User {
             .put(&format!("users/{}/eportfolios", self.id), params)
             .await
     }
+
+    /// Stream calendar events visible to this user.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/users/:id/calendar_events`
+    pub fn get_calendar_events_for_user(&self) -> PageStream<CalendarEvent> {
+        let user_id = self.id;
+        PageStream::new_with_injector(
+            Arc::clone(self.req()),
+            &format!("users/{user_id}/calendar_events"),
+            vec![],
+            |mut e: CalendarEvent, req| {
+                e.requester = Some(Arc::clone(&req));
+                e
+            },
+        )
+    }
 }
 
 /// The currently authenticated user (extends User with additional fields).
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, canvas_lms_api_derive::CanvasResource)]
 pub struct CurrentUser {
     pub id: u64,
     pub name: Option<String>,
@@ -802,6 +823,148 @@ pub struct CurrentUser {
     pub time_zone: Option<String>,
     pub bio: Option<String>,
     pub effective_locale: Option<String>,
+
+    #[serde(skip)]
+    pub(crate) requester: Option<Arc<Requester>>,
+}
+
+impl CurrentUser {
+    /// Add a course to this user's favorites.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/users/self/favorites/courses/:id`
+    pub async fn add_favorite_course(&self, course_id: u64) -> Result<Favorite> {
+        let mut f: Favorite = self
+            .req()
+            .post(&format!("users/self/favorites/courses/{course_id}"), &[])
+            .await?;
+        f.requester = self.requester.clone();
+        Ok(f)
+    }
+
+    /// Add a group to this user's favorites.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/users/self/favorites/groups/:id`
+    pub async fn add_favorite_group(&self, group_id: u64) -> Result<Favorite> {
+        let mut f: Favorite = self
+            .req()
+            .post(&format!("users/self/favorites/groups/{group_id}"), &[])
+            .await?;
+        f.requester = self.requester.clone();
+        Ok(f)
+    }
+
+    /// Stream favorite courses for this user.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/users/self/favorites/courses`
+    pub fn get_favorite_courses(&self) -> PageStream<Course> {
+        PageStream::new_with_injector(
+            Arc::clone(self.req()),
+            "users/self/favorites/courses",
+            vec![],
+            |mut c: Course, req| {
+                c.requester = Some(Arc::clone(&req));
+                c
+            },
+        )
+    }
+
+    /// Stream favorite groups for this user.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/users/self/favorites/groups`
+    pub fn get_favorite_groups(&self) -> PageStream<Group> {
+        PageStream::new_with_injector(
+            Arc::clone(self.req()),
+            "users/self/favorites/groups",
+            vec![],
+            |mut g: Group, req| {
+                g.requester = Some(Arc::clone(&req));
+                g
+            },
+        )
+    }
+
+    /// Reset favorite courses to the default enrolled set.
+    ///
+    /// # Canvas API
+    /// `DELETE /api/v1/users/self/favorites/courses`
+    pub async fn reset_favorite_courses(&self) -> Result<()> {
+        self.req()
+            .delete_void("users/self/favorites/courses")
+            .await
+    }
+
+    /// Reset favorite groups to the default set.
+    ///
+    /// # Canvas API
+    /// `DELETE /api/v1/users/self/favorites/groups`
+    pub async fn reset_favorite_groups(&self) -> Result<()> {
+        self.req()
+            .delete_void("users/self/favorites/groups")
+            .await
+    }
+
+    /// Create a new bookmark.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/users/self/bookmarks`
+    pub async fn create_bookmark(&self, name: &str, url: &str) -> Result<Bookmark> {
+        let params = vec![
+            ("name".to_string(), name.to_string()),
+            ("url".to_string(), url.to_string()),
+        ];
+        let mut b: Bookmark = self.req().post("users/self/bookmarks", &params).await?;
+        b.requester = self.requester.clone();
+        Ok(b)
+    }
+
+    /// Fetch a single bookmark by ID.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/users/self/bookmarks/:id`
+    pub async fn get_bookmark(&self, bookmark_id: u64) -> Result<Bookmark> {
+        let mut b: Bookmark = self
+            .req()
+            .get(&format!("users/self/bookmarks/{bookmark_id}"), &[])
+            .await?;
+        b.requester = self.requester.clone();
+        Ok(b)
+    }
+
+    /// Stream all bookmarks for this user.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/users/self/bookmarks`
+    pub fn get_bookmarks(&self) -> PageStream<Bookmark> {
+        PageStream::new_with_injector(
+            Arc::clone(self.req()),
+            "users/self/bookmarks",
+            vec![],
+            |mut b: Bookmark, req| {
+                b.requester = Some(Arc::clone(&req));
+                b
+            },
+        )
+    }
+
+    /// Stream active groups for this user.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/users/self/groups`
+    pub fn get_groups(&self) -> PageStream<Group> {
+        PageStream::new_with_injector(
+            Arc::clone(self.req()),
+            "users/self/groups",
+            vec![],
+            |mut g: Group, req| {
+                g.requester = Some(Arc::clone(&req));
+                g
+            },
+        )
+    }
 }
 
 /// A user display stub (id + name only) used in nested contexts.

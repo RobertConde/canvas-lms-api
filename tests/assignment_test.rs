@@ -597,7 +597,7 @@ async fn test_assignment_show_provisional_grades_for_student() {
         .await;
 
     let result = assignment
-        .show_provisional_grades_for_student(1)
+        .show_provisional_grades_for_student("anon1")
         .await
         .unwrap();
     assert_eq!(result["needs_provisional_grade"], false);

@@ -1019,3 +1019,27 @@ async fn test_user_moderate_all_eportfolios() {
         .unwrap();
     assert_eq!(result["count"], 3);
 }
+
+#[tokio::test]
+async fn test_user_get_calendar_events_for_user() {
+    let server = MockServer::start().await;
+    let user = setup(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/users/42/calendar_events"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"id": 1, "title": "Office Hours", "context_code": "course_1"},
+            {"id": 2, "title": "Final Exam", "context_code": "course_1"}
+        ])))
+        .mount(&server)
+        .await;
+
+    let events = user
+        .get_calendar_events_for_user()
+        .collect_all()
+        .await
+        .unwrap();
+    assert_eq!(events.len(), 2);
+    assert_eq!(events[0].id, 1);
+    assert_eq!(events[0].title.as_deref(), Some("Office Hours"));
+}

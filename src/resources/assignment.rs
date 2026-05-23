@@ -471,20 +471,19 @@ impl Assignment {
     /// `GET /api/v1/courses/:course_id/assignments/:id/anonymous_provisional_grades/status`
     pub async fn show_provisional_grades_for_student(
         &self,
-        anonymous_id: u64,
+        anonymous_id: &str,
     ) -> Result<serde_json::Value> {
         let course_id = self.course_id.ok_or_else(|| CanvasError::BadRequest {
             message: "Assignment has no course_id".to_string(),
             errors: vec![],
         })?;
-        let params = vec![("anonymous_id".to_string(), anonymous_id.to_string())];
         self.req()
             .get(
                 &format!(
                     "courses/{course_id}/assignments/{}/anonymous_provisional_grades/status",
                     self.id
                 ),
-                &params,
+                &[("anonymous_id".to_string(), anonymous_id.to_string())],
             )
             .await
     }

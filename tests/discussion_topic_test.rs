@@ -416,3 +416,19 @@ async fn test_discussion_topic_get_parent_course() {
     let parent = topic.get_parent().await.unwrap();
     assert_eq!(parent["id"], 1);
 }
+
+#[tokio::test]
+async fn test_discussion_entry_get_discussion() {
+    let server = MockServer::start().await;
+    let entry = setup_with_entry(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/discussion_topics/1"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(topic_json(1, 1)))
+        .mount(&server)
+        .await;
+
+    let topic = entry.get_discussion().await.unwrap();
+    assert_eq!(topic.id, 1);
+    assert_eq!(topic.title.as_deref(), Some("Test Discussion"));
+}

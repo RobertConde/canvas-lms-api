@@ -345,6 +345,18 @@ impl Account {
         )
     }
 
+    /// Stream available migration system types for this account.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/accounts/:account_id/content_migrations/migrators`
+    pub fn get_migration_systems(&self) -> PageStream<Migrator> {
+        PageStream::new(
+            Arc::clone(self.req()),
+            &format!("accounts/{}/content_migrations/migrators", self.id),
+            vec![],
+        )
+    }
+
     /// Create a content migration on this account.
     ///
     /// # Canvas API

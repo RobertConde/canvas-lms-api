@@ -181,3 +181,28 @@ async fn test_page_delete_group() {
     let deleted = page.delete().await.unwrap();
     assert_eq!(deleted.url.as_deref(), Some("welcome"));
 }
+
+#[tokio::test]
+async fn test_page_get_parent_course() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 1,
+            "name": "Test Course"
+        })))
+        .mount(&server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/pages/welcome"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(page_json("welcome", "Welcome")))
+        .mount(&server)
+        .await;
+
+    let canvas = Canvas::new(&server.uri(), "test-token").unwrap();
+    let course = canvas.get_course(1).await.unwrap();
+    let page = course.get_page("welcome").await.unwrap();
+    let parent = page.get_parent().await.unwrap();
+    assert_eq!(parent["id"], 1);
+}

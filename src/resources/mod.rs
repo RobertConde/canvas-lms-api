@@ -6,6 +6,7 @@ pub mod assignment;
 pub mod authentication_event;
 pub mod authentication_provider;
 pub mod blueprint;
+pub mod bookmark;
 pub mod calendar_event;
 pub mod collaboration;
 pub mod comm_message;

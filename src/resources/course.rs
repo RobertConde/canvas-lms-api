@@ -779,6 +779,18 @@ impl Course {
         )
     }
 
+    /// Stream available migration system types for this course.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/content_migrations/migrators`
+    pub fn get_migration_systems(&self) -> PageStream<Migrator> {
+        PageStream::new(
+            Arc::clone(self.req()),
+            &format!("courses/{}/content_migrations/migrators", self.id),
+            vec![],
+        )
+    }
+
     /// Create a content migration for this course.
     ///
     /// # Canvas API

@@ -405,3 +405,17 @@ async fn test_entry_rate_invalid() {
     let result = entry.rate(2).await;
     assert!(result.is_err());
 }
+
+// ============================================================================
+// v0.8.0 Batch 5 — DiscussionTopic::get_parent
+// ============================================================================
+
+#[tokio::test]
+async fn test_discussion_topic_get_parent_course() {
+    let server = MockServer::start().await;
+    let topic = setup(&server).await;
+
+    // GET /courses/1 is already registered by setup(); get_parent() re-uses it.
+    let parent = topic.get_parent().await.unwrap();
+    assert_eq!(parent["id"], 1);
+}

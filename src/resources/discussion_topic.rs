@@ -268,6 +268,27 @@ impl DiscussionTopic {
             ))
             .await
     }
+
+    /// Fetch the parent Course or Group that owns this topic.
+    ///
+    /// Returns the raw JSON; callers can deserialize into `Course` or `Group`.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:id` or `GET /api/v1/groups/:id`
+    pub async fn get_parent(&self) -> Result<serde_json::Value> {
+        use crate::error::CanvasError;
+        let url = if let Some(id) = self.course_id.or(self.course_id_ctx) {
+            format!("courses/{id}")
+        } else if let Some(id) = self.group_id {
+            format!("groups/{id}")
+        } else {
+            return Err(CanvasError::BadRequest {
+                message: "DiscussionTopic has no course_id or group_id".to_string(),
+                errors: vec![],
+            });
+        };
+        self.req().get(&url, &[]).await
+    }
 }
 
 /// A single entry (post) within a Canvas discussion topic.

@@ -974,3 +974,51 @@ async fn test_user_remove_usage_rights() {
         .unwrap();
     assert_eq!(result["message"], "2 files updated");
 }
+
+// ============================================================================
+// v0.8.0 Batch 5 — User::get_assignments + User::moderate_all_eportfolios
+// ============================================================================
+
+#[tokio::test]
+async fn test_user_get_assignments() {
+    let server = MockServer::start().await;
+    let user = setup(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/users/42/courses/10/assignments"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"id": 1, "course_id": 10, "name": "Assignment A"},
+            {"id": 2, "course_id": 10, "name": "Assignment B"}
+        ])))
+        .mount(&server)
+        .await;
+
+    let assignments: Vec<_> = user
+        .get_assignments(10)
+        .collect_all()
+        .await
+        .unwrap();
+    assert_eq!(assignments.len(), 2);
+    assert_eq!(assignments[0].id, 1);
+    assert_eq!(assignments[1].id, 2);
+}
+
+#[tokio::test]
+async fn test_user_moderate_all_eportfolios() {
+    let server = MockServer::start().await;
+    let user = setup(&server).await;
+
+    Mock::given(method("PUT"))
+        .and(path("/api/v1/users/42/eportfolios"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "count": 3
+        })))
+        .mount(&server)
+        .await;
+
+    let result = user
+        .moderate_all_eportfolios(&[("spam_status".to_string(), "marked_as_spam".to_string())])
+        .await
+        .unwrap();
+    assert_eq!(result["count"], 3);
+}

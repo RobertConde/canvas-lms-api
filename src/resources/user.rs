@@ -4,6 +4,7 @@ use crate::{
     pagination::PageStream,
     params::wrap_params,
     resources::{
+        assignment::Assignment,
         communication_channel::CommunicationChannel,
         content_migration::{ContentMigration, Migrator},
         course::Course,
@@ -745,6 +746,37 @@ impl User {
     ) -> Result<serde_json::Value> {
         self.req()
             .delete(&format!("users/{}/usage_rights", self.id), params)
+            .await
+    }
+
+    /// Stream assignments for this user in a given course.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/users/:id/courses/:course_id/assignments`
+    pub fn get_assignments(&self, course_id: u64) -> PageStream<Assignment> {
+        let user_id = self.id;
+        PageStream::new_with_injector(
+            Arc::clone(self.req()),
+            &format!("users/{user_id}/courses/{course_id}/assignments"),
+            vec![],
+            move |mut a: Assignment, req| {
+                a.requester = Some(Arc::clone(&req));
+                a.course_id = Some(course_id);
+                a
+            },
+        )
+    }
+
+    /// Moderate (spam/not-spam) all ePortfolios for this user.
+    ///
+    /// # Canvas API
+    /// `PUT /api/v1/users/:id/eportfolios`
+    pub async fn moderate_all_eportfolios(
+        &self,
+        params: &[(String, String)],
+    ) -> Result<serde_json::Value> {
+        self.req()
+            .put(&format!("users/{}/eportfolios", self.id), params)
             .await
     }
 }

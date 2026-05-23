@@ -3,10 +3,33 @@ use crate::{
     http::Requester,
     pagination::PageStream,
     params::wrap_params,
+    resources::user::User,
+    upload::{initiate_and_upload, UploadRequest},
 };
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+
+/// A Canvas peer review assignment.
+#[derive(Debug, Clone, Deserialize, Serialize, canvas_lms_api_derive::CanvasResource)]
+pub struct PeerReview {
+    pub assessor_id: Option<u64>,
+    pub asset_id: Option<u64>,
+    pub asset_type: Option<String>,
+    pub id: Option<u64>,
+    pub user_id: Option<u64>,
+    pub user: Option<User>,
+    pub workflow_state: Option<String>,
+
+    #[serde(skip)]
+    pub(crate) requester: Option<Arc<Requester>>,
+    #[serde(skip)]
+    pub(crate) course_id: Option<u64>,
+    #[serde(skip)]
+    pub(crate) assignment_id: Option<u64>,
+    #[serde(skip)]
+    pub(crate) submission_user_id: Option<u64>,
+}
 
 /// Parameters for editing a Canvas submission (grading, comments, etc).
 #[derive(Debug, Default, Clone, Serialize)]
@@ -105,36 +128,74 @@ impl Submission {
     ///
     /// # Canvas API
     /// `POST /api/v1/courses/:course_id/assignments/:assignment_id/submissions/:user_id/peer_reviews`
-    pub async fn create_submission_peer_review(&self, user_id: u64) -> Result<serde_json::Value> {
+    pub async fn create_submission_peer_review(&self, assessor_id: u64) -> Result<PeerReview> {
         let prefix = self.course_assignment_user_prefix()?;
-        let params = vec![("user_id".to_string(), user_id.to_string())];
-        self.req()
-            .post(&format!("{prefix}/peer_reviews"), &params)
-            .await
+        let params = vec![("user_id".to_string(), assessor_id.to_string())];
+        let mut pr: PeerReview = self.req().post(&format!("{prefix}/peer_reviews"), &params).await?;
+        pr.requester = self.requester.clone();
+        pr.course_id = self.course_id;
+        pr.assignment_id = self.assignment_id;
+        pr.submission_user_id = self.user_id;
+        Ok(pr)
     }
 
     /// Delete a peer review for this submission.
     ///
     /// # Canvas API
     /// `DELETE /api/v1/courses/:course_id/assignments/:assignment_id/submissions/:user_id/peer_reviews`
-    pub async fn delete_submission_peer_review(&self, user_id: u64) -> Result<serde_json::Value> {
+    pub async fn delete_submission_peer_review(&self, assessor_id: u64) -> Result<PeerReview> {
         let prefix = self.course_assignment_user_prefix()?;
-        let params = vec![("user_id".to_string(), user_id.to_string())];
-        self.req()
+        let params = vec![("user_id".to_string(), assessor_id.to_string())];
+        let mut pr: PeerReview = self
+            .req()
             .delete(&format!("{prefix}/peer_reviews"), &params)
-            .await
+            .await?;
+        pr.requester = self.requester.clone();
+        pr.course_id = self.course_id;
+        pr.assignment_id = self.assignment_id;
+        pr.submission_user_id = self.user_id;
+        Ok(pr)
     }
 
     /// Stream all peer reviews for this submission.
     ///
     /// # Canvas API
     /// `GET /api/v1/courses/:course_id/assignments/:assignment_id/submissions/:user_id/peer_reviews`
-    pub fn get_submission_peer_reviews(&self) -> PageStream<serde_json::Value> {
+    pub fn get_submission_peer_reviews(&self) -> PageStream<PeerReview> {
         let prefix = self.course_assignment_user_prefix().unwrap_or_default();
-        PageStream::new(
+        let course_id = self.course_id;
+        let assignment_id = self.assignment_id;
+        let submission_user_id = self.user_id;
+        PageStream::new_with_injector(
             Arc::clone(self.req()),
             &format!("{prefix}/peer_reviews"),
             vec![],
+            move |mut pr: PeerReview, req| {
+                pr.requester = Some(Arc::clone(&req));
+                pr.course_id = course_id;
+                pr.assignment_id = assignment_id;
+                pr.submission_user_id = submission_user_id;
+                pr
+            },
         )
+    }
+
+    /// Upload a file as a submission comment attachment.
+    ///
+    /// Performs the two-step Canvas file upload to
+    /// `courses/:course_id/assignments/:assignment_id/submissions/:user_id/comments/files`.
+    /// Returns the uploaded [`File`][crate::resources::file::File].
+    ///
+    /// # Canvas API
+    /// Step 1: `POST /api/v1/courses/:c/assignments/:a/submissions/:u/comments/files`
+    /// Step 2: POST multipart to the returned upload URL
+    pub async fn upload_comment(
+        &self,
+        request: UploadRequest,
+        data: Vec<u8>,
+    ) -> Result<crate::resources::file::File> {
+        let prefix = self.course_assignment_user_prefix()?;
+        let endpoint = format!("{prefix}/comments/files");
+        initiate_and_upload(self.req(), &endpoint, request, data).await
     }
 }

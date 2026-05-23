@@ -15,6 +15,28 @@ fn submission_json(id: u64, course_id: u64, assignment_id: u64, user_id: u64) ->
     })
 }
 
+async fn setup_with_canvas(
+    canvas: &canvas_lms_api::Canvas,
+    server: &MockServer,
+) -> canvas_lms_api::resources::submission::Submission {
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/assignments/2"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(
+            serde_json::json!({"id": 2, "course_id": 1, "name": "Assignment 1"}),
+        ))
+        .mount(server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/assignments/2/submissions/3"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(submission_json(10, 1, 2, 3)))
+        .mount(server)
+        .await;
+
+    let course = canvas.get_course(1).await.unwrap();
+    let assignment = course.get_assignment(2).await.unwrap();
+    assignment.get_submission(3).await.unwrap()
+}
+
 async fn setup(server: &MockServer) -> canvas_lms_api::resources::submission::Submission {
     Mock::given(method("GET"))
         .and(path("/api/v1/courses/1"))
@@ -115,7 +137,8 @@ async fn test_submission_create_peer_review() {
         .await;
 
     let pr = submission.create_submission_peer_review(99).await.unwrap();
-    assert_eq!(pr["user_id"], 7);
+    assert_eq!(pr.assessor_id, Some(99));
+    assert_eq!(pr.workflow_state.as_deref(), Some("assigned"));
 }
 
 #[tokio::test]
@@ -136,7 +159,8 @@ async fn test_submission_delete_peer_review() {
         .await;
 
     let pr = submission.delete_submission_peer_review(99).await.unwrap();
-    assert_eq!(pr["user_id"], 7);
+    assert_eq!(pr.assessor_id, Some(99));
+    assert_eq!(pr.workflow_state.as_deref(), Some("completed"));
 }
 
 #[tokio::test]
@@ -161,5 +185,72 @@ async fn test_submission_get_peer_reviews() {
         .await
         .unwrap();
     assert_eq!(prs.len(), 2);
-    assert_eq!(prs[0]["assessor_id"], 10);
+    assert_eq!(prs[0].assessor_id, Some(10));
+    assert_eq!(prs[1].workflow_state.as_deref(), Some("completed"));
+}
+
+// ============================================================================
+// v0.8.0 Batch 4 — PeerReview + upload_comment
+// ============================================================================
+
+#[tokio::test]
+async fn test_submission_upload_comment() {
+    use canvas_lms_api::upload::UploadRequest;
+
+    let canvas_server = MockServer::start().await;
+    let upload_server = MockServer::start().await;
+
+    // Setup mock for get_course and get submission path
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 1, "name": "Test Course"
+        })))
+        .mount(&canvas_server)
+        .await;
+
+    // Step 1: Canvas returns upload intent for comment file
+    Mock::given(method("POST"))
+        .and(path(
+            "/api/v1/courses/1/assignments/2/submissions/3/comments/files",
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "upload_url": format!("{}/s3-upload", upload_server.uri()),
+            "upload_params": {
+                "key": "comments/attachment",
+                "Policy": "FAKEPOLICY"
+            }
+        })))
+        .mount(&canvas_server)
+        .await;
+
+    // Step 2: Upload target returns File object
+    Mock::given(method("POST"))
+        .and(path("/s3-upload"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 77,
+            "display_name": "feedback.pdf",
+            "filename": "feedback.pdf",
+            "content_type": "application/pdf",
+            "size": 1024
+        })))
+        .mount(&upload_server)
+        .await;
+
+    let canvas = canvas_lms_api::Canvas::new(&canvas_server.uri(), "test-token").unwrap();
+    let submission = setup_with_canvas(&canvas, &canvas_server).await;
+
+    let request = UploadRequest {
+        name: "feedback.pdf".to_string(),
+        size: 1024,
+        content_type: Some("application/pdf".to_string()),
+        ..Default::default()
+    };
+
+    let file = submission
+        .upload_comment(request, vec![0u8; 1024])
+        .await
+        .unwrap();
+    assert_eq!(file.id, 77);
+    assert_eq!(file.display_name.as_deref(), Some("feedback.pdf"));
 }

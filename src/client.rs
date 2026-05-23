@@ -5,6 +5,7 @@ use crate::{
     params::wrap_params,
     resources::{
         account::Account,
+        account_calendar::AccountCalendar,
         appointment_group::{AppointmentGroup, AppointmentGroupParams},
         calendar_event::{CalendarEvent, CalendarEventParams},
         conversation::{Conversation, ConversationParams},
@@ -12,9 +13,9 @@ use crate::{
         eportfolio::EPortfolio,
         file::File,
         folder::Folder,
-        group::Group,
+        group::{Group, GroupCategory},
         jwt::CanvasJwt,
-        outcome::Outcome,
+        outcome::{Outcome, OutcomeGroup},
         params::{course_params::CreateCourseParams, user_params::CreateUserParams},
         planner::{PlannerNote, PlannerNoteParams, PlannerOverride},
         poll::{CreatePollParams, Poll},
@@ -650,6 +651,348 @@ impl Canvas {
     pub async fn refresh_jwt(&self, token: &str) -> Result<CanvasJwt> {
         let params = vec![("jwt".into(), token.to_string())];
         self.requester.post("jwts/refresh", &params).await
+    }
+
+    // -------------------------------------------------------------------------
+    // Group Categories
+    // -------------------------------------------------------------------------
+
+    /// Fetch a single group category by ID.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/group_categories/:id`
+    pub async fn get_group_category(&self, category_id: u64) -> Result<GroupCategory> {
+        let mut gc: GroupCategory = self
+            .requester
+            .get(&format!("group_categories/{category_id}"), &[])
+            .await?;
+        gc.requester = Some(Arc::clone(&self.requester));
+        Ok(gc)
+    }
+
+    // -------------------------------------------------------------------------
+    // Account Calendars
+    // -------------------------------------------------------------------------
+
+    /// Stream all account calendars available to the user.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/account_calendars`
+    pub fn get_account_calendars(&self) -> PageStream<AccountCalendar> {
+        PageStream::new(Arc::clone(&self.requester), "account_calendars", vec![])
+    }
+
+    // -------------------------------------------------------------------------
+    // Outcome Groups (global)
+    // -------------------------------------------------------------------------
+
+    /// Fetch the global root outcome group.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/global/root_outcome_group`
+    pub async fn get_root_outcome_group(&self) -> Result<OutcomeGroup> {
+        let mut og: OutcomeGroup = self
+            .requester
+            .get("global/root_outcome_group", &[])
+            .await?;
+        og.requester = Some(Arc::clone(&self.requester));
+        Ok(og)
+    }
+
+    // -------------------------------------------------------------------------
+    // Announcements
+    // -------------------------------------------------------------------------
+
+    /// Stream announcements across one or more courses.
+    ///
+    /// `context_codes` should be strings like `"course_123"`.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/announcements`
+    pub fn get_announcements(&self, context_codes: &[&str]) -> PageStream<serde_json::Value> {
+        let params: Vec<(String, String)> = context_codes
+            .iter()
+            .map(|c| ("context_codes[]".to_string(), c.to_string()))
+            .collect();
+        PageStream::new(Arc::clone(&self.requester), "announcements", params)
+    }
+
+    // -------------------------------------------------------------------------
+    // Search
+    // -------------------------------------------------------------------------
+
+    /// Search for accounts by name or domain (up to 5 results).
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/accounts/search`
+    pub async fn search_accounts(&self) -> Result<serde_json::Value> {
+        self.requester.get("accounts/search", &[]).await
+    }
+
+    /// List all publicly visible courses.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/search/all_courses`
+    pub async fn search_all_courses(&self) -> Result<serde_json::Value> {
+        self.requester.get("search/all_courses", &[]).await
+    }
+
+    /// Find valid message recipients (users, courses, groups) for the current user.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/search/recipients`
+    pub async fn search_recipients(&self) -> Result<serde_json::Value> {
+        self.requester.get("search/recipients", &[]).await
+    }
+
+    // -------------------------------------------------------------------------
+    // Activity Stream / Todo / Upcoming
+    // -------------------------------------------------------------------------
+
+    /// Return a summary of the current user's global activity stream.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/users/self/activity_stream/summary`
+    pub async fn get_activity_stream_summary(&self) -> Result<serde_json::Value> {
+        self.requester
+            .get("users/self/activity_stream/summary", &[])
+            .await
+    }
+
+    /// Stream the current user's todo items.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/users/self/todo`
+    pub fn get_todo_items(&self) -> PageStream<serde_json::Value> {
+        PageStream::new(Arc::clone(&self.requester), "users/self/todo", vec![])
+    }
+
+    /// Return the current user's upcoming calendar events.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/users/self/upcoming_events`
+    pub async fn get_upcoming_events(&self) -> Result<serde_json::Value> {
+        self.requester.get("users/self/upcoming_events", &[]).await
+    }
+
+    // -------------------------------------------------------------------------
+    // Course Accounts
+    // -------------------------------------------------------------------------
+
+    /// Stream accounts visible through the current user's admin course enrollments.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/course_accounts`
+    pub fn get_course_accounts(&self) -> PageStream<Account> {
+        PageStream::new_with_injector(
+            Arc::clone(&self.requester),
+            "course_accounts",
+            vec![],
+            |mut a: Account, req| {
+                a.requester = Some(Arc::clone(&req));
+                a
+            },
+        )
+    }
+
+    // -------------------------------------------------------------------------
+    // Course Nicknames
+    // -------------------------------------------------------------------------
+
+    /// Return the nickname set for a given course by the current user.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/users/self/course_nicknames/:course_id`
+    pub async fn get_course_nickname(&self, course_id: u64) -> Result<serde_json::Value> {
+        self.requester
+            .get(&format!("users/self/course_nicknames/{course_id}"), &[])
+            .await
+    }
+
+    /// Stream all course nicknames set by the current user.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/users/self/course_nicknames`
+    pub fn get_course_nicknames(&self) -> PageStream<serde_json::Value> {
+        PageStream::new(
+            Arc::clone(&self.requester),
+            "users/self/course_nicknames",
+            vec![],
+        )
+    }
+
+    /// Set a nickname for the given course.
+    ///
+    /// # Canvas API
+    /// `PUT /api/v1/users/self/course_nicknames/:course_id`
+    pub async fn set_course_nickname(
+        &self,
+        course_id: u64,
+        nickname: &str,
+    ) -> Result<serde_json::Value> {
+        let params = vec![("nickname".to_string(), nickname.to_string())];
+        self.requester
+            .put(&format!("users/self/course_nicknames/{course_id}"), &params)
+            .await
+    }
+
+    /// Remove all stored course nicknames for the current user.
+    ///
+    /// # Canvas API
+    /// `DELETE /api/v1/users/self/course_nicknames`
+    pub async fn clear_course_nicknames(&self) -> Result<serde_json::Value> {
+        self.requester
+            .delete("users/self/course_nicknames", &[])
+            .await
+    }
+
+    // -------------------------------------------------------------------------
+    // EPub Exports
+    // -------------------------------------------------------------------------
+
+    /// Stream epub exports for all courses.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/epub_exports`
+    pub fn get_epub_exports(&self) -> PageStream<serde_json::Value> {
+        PageStream::new(Arc::clone(&self.requester), "epub_exports", vec![])
+    }
+
+    // -------------------------------------------------------------------------
+    // Brand Variables
+    // -------------------------------------------------------------------------
+
+    /// Return account brand variables (colors, logos, etc.).
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/brand_variables`
+    pub async fn get_brand_variables(&self) -> Result<serde_json::Value> {
+        self.requester.get("brand_variables", &[]).await
+    }
+
+    // -------------------------------------------------------------------------
+    // Comm Messages
+    // -------------------------------------------------------------------------
+
+    /// Stream messages sent to a specific user.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/comm_messages`
+    pub fn get_comm_messages(&self, user_id: u64) -> PageStream<serde_json::Value> {
+        let params = vec![("user_id".to_string(), user_id.to_string())];
+        PageStream::new(Arc::clone(&self.requester), "comm_messages", params)
+    }
+
+    // -------------------------------------------------------------------------
+    // Conversations (bulk operations)
+    // -------------------------------------------------------------------------
+
+    /// Perform a bulk action on multiple conversations.
+    ///
+    /// Valid `event` values: `"mark_as_read"`, `"mark_as_unread"`, `"star"`,
+    /// `"unstar"`, `"archive"`, `"destroy"`.
+    ///
+    /// # Canvas API
+    /// `PUT /api/v1/conversations`
+    pub async fn conversations_batch_update(
+        &self,
+        ids: &[u64],
+        event: &str,
+    ) -> Result<Progress> {
+        let mut params: Vec<(String, String)> = ids
+            .iter()
+            .map(|id| ("conversation_ids[]".to_string(), id.to_string()))
+            .collect();
+        params.push(("event".to_string(), event.to_string()));
+        let mut p: Progress = self.requester.put("conversations", &params).await?;
+        p.requester = Some(Arc::clone(&self.requester));
+        Ok(p)
+    }
+
+    /// Return any currently running conversation batches for the current user.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/conversations/batches`
+    pub async fn conversations_get_running_batches(&self) -> Result<serde_json::Value> {
+        self.requester.get("conversations/batches", &[]).await
+    }
+
+    /// Mark all conversations as read for the current user.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/conversations/mark_all_as_read`
+    pub async fn conversations_mark_all_as_read(&self) -> Result<()> {
+        self.requester
+            .post_void_with_params("conversations/mark_all_as_read", &[])
+            .await
+    }
+
+    /// Return the number of unread conversations for the current user.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/conversations/unread_count`
+    pub async fn conversations_unread_count(&self) -> Result<serde_json::Value> {
+        self.requester.get("conversations/unread_count", &[]).await
+    }
+
+    // -------------------------------------------------------------------------
+    // Appointment Group Participants
+    // -------------------------------------------------------------------------
+
+    /// Stream student group participants in an appointment group.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/appointment_groups/:id/groups`
+    pub fn get_group_participants(&self, appt_group_id: u64) -> PageStream<Group> {
+        PageStream::new_with_injector(
+            Arc::clone(&self.requester),
+            &format!("appointment_groups/{appt_group_id}/groups"),
+            vec![],
+            |mut g: Group, req| {
+                g.requester = Some(Arc::clone(&req));
+                g
+            },
+        )
+    }
+
+    /// Stream user participants in an appointment group.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/appointment_groups/:id/users`
+    pub fn get_user_participants(&self, appt_group_id: u64) -> PageStream<User> {
+        PageStream::new_with_injector(
+            Arc::clone(&self.requester),
+            &format!("appointment_groups/{appt_group_id}/users"),
+            vec![],
+            |mut u: User, req| {
+                u.requester = Some(Arc::clone(&req));
+                u
+            },
+        )
+    }
+
+    // -------------------------------------------------------------------------
+    // Calendar Event Reservations
+    // -------------------------------------------------------------------------
+
+    /// Reserve a time slot on a calendar event.
+    ///
+    /// Pass `participant_id` to reserve on behalf of another user.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/calendar_events/:id/reservations[/:participant_id]`
+    pub async fn reserve_time_slot(
+        &self,
+        event_id: u64,
+        participant_id: Option<u64>,
+    ) -> Result<CalendarEvent> {
+        let path = match participant_id {
+            Some(pid) => format!("calendar_events/{event_id}/reservations/{pid}"),
+            None => format!("calendar_events/{event_id}/reservations"),
+        };
+        let mut e: CalendarEvent = self.requester.post(&path, &[]).await?;
+        e.requester = Some(Arc::clone(&self.requester));
+        Ok(e)
     }
 }
 

@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-05-23
+
+Full API parity with the Python [`canvasapi`](https://github.com/ucfopen/canvasapi) library.
+Every public method in `canvasapi` maps to a Rust equivalent (naming differences are deliberate:
+typo fixes, `get_`/`create_` conventions, redundant-prefix removal, file consolidation).
+
+### Added
+- **AuthenticationProvider** — `delete`, `update` instance methods; `Account` callers now inject
+  `account_id` so instance methods have full context
+- **BlueprintTemplate** — `change_blueprint_restrictions`
+- **CommunicationChannel** — `update_multiple_preferences`
+- **ContentMigration** — `get_parent`, `get_selective_data`
+- **CustomGradebookColumn** — `reorder_custom_columns`
+- **ExternalTool** — `get_parent`
+- **OutcomeLink** — `get_outcome`, `get_outcome_group`; `OutcomeGroup` callers now inject
+  requester into returned `OutcomeLink`s
+- **OutcomeGroup** — `link_new` (create a new outcome and link it in one call)
+- **PageRevision** — `get_parent`
+- **CurrentUser** — `add_favorite_course`, `add_favorite_group`, `get_favorite_courses`,
+  `get_favorite_groups`, `reset_favorite_courses`, `reset_favorite_groups`, `create_bookmark`,
+  `get_bookmark`, `get_bookmarks`, `get_groups`; `Canvas::get_current_user` now injects requester
+- **Bookmark** — new resource struct with `edit`, `delete`
+- **Account / Course** — `get_migration_systems`
+- **User** — `get_calendar_events_for_user`
+- **Page** — `get_parent`
+- **DiscussionEntry** — `get_discussion`
+- Typed structs for previously `Value`-typed returns: `AccountNotification`, `AuthenticationEvent`,
+  `AuthenticationProvider`, `CommMessage`, `ExternalFeed`, `Favorite`, `License`, `PageView`,
+  `PairingCode`, `Scope`, `Todo`, `UsageRights`
+- 692 async / 681 blocking integration tests, 0 failures
+
+### Fixed
+- `Assignment::show_provisional_grades_for_student` — `anonymous_id` param changed from `u64`
+  to `&str` to match Canvas API
+
 ## [0.7.0] - 2026-05-23
 
 ### Added
@@ -278,6 +313,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI: fmt, clippy, tests, doc build, MSRV 1.75 check
 - MIT license
 
+[1.0.0]: https://github.com/RobertConde/canvas-lms-api/compare/v0.7.0...v1.0.0
 [0.7.0]: https://github.com/RobertConde/canvas-lms-api/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/RobertConde/canvas-lms-api/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/RobertConde/canvas-lms-api/compare/v0.5.0...v0.5.1

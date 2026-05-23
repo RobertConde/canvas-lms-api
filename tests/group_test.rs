@@ -875,7 +875,7 @@ async fn test_group_get_external_feeds() {
 
     let feeds = group.get_external_feeds().collect_all().await.unwrap();
     assert_eq!(feeds.len(), 2);
-    assert_eq!(feeds[0]["display_name"], "My Blog");
+    assert_eq!(feeds[0].display_name.as_deref(), Some("My Blog"));
 }
 
 #[tokio::test]
@@ -897,8 +897,8 @@ async fn test_group_create_external_feed() {
         .create_external_feed("https://example.com/myblog.rss")
         .await
         .unwrap();
-    assert_eq!(feed["id"], 1);
-    assert_eq!(feed["url"], "https://example.com/myblog.rss");
+    assert_eq!(feed.id, Some(1));
+    assert_eq!(feed.url.as_deref(), Some("https://example.com/myblog.rss"));
 }
 
 #[tokio::test]
@@ -917,7 +917,7 @@ async fn test_group_delete_external_feed() {
         .await;
 
     let feed = group.delete_external_feed(1).await.unwrap();
-    assert_eq!(feed["display_name"], "My Blog");
+    assert_eq!(feed.display_name.as_deref(), Some("My Blog"));
 }
 
 #[tokio::test]
@@ -959,8 +959,8 @@ async fn test_group_set_usage_rights() {
         .await;
 
     let result = group.set_usage_rights(&[]).await.unwrap();
-    assert_eq!(result["use_justification"], "fair_use");
-    assert_eq!(result["message"], "2 files updated");
+    assert_eq!(result.use_justification.as_deref(), Some("fair_use"));
+    assert_eq!(result.message.as_deref(), Some("2 files updated"));
 }
 
 #[tokio::test]
@@ -978,8 +978,7 @@ async fn test_group_remove_usage_rights() {
         .await;
 
     let result = group.remove_usage_rights(&[]).await.unwrap();
-    assert_eq!(result["message"], "2 files updated");
-    assert_eq!(result["file_ids"][0], 1);
+    assert_eq!(result.message.as_deref(), Some("2 files updated"));
 }
 
 #[tokio::test]
@@ -998,8 +997,8 @@ async fn test_group_get_licenses() {
 
     let licenses = group.get_licenses().collect_all().await.unwrap();
     assert_eq!(licenses.len(), 2);
-    assert_eq!(licenses[0]["id"], "private");
-    assert_eq!(licenses[1]["id"], "public_domain");
+    assert_eq!(licenses[0].id.as_deref(), Some("private"));
+    assert_eq!(licenses[1].id.as_deref(), Some("public_domain"));
 }
 
 #[tokio::test]

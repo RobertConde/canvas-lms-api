@@ -5,6 +5,9 @@ use crate::{
     params::wrap_params,
     resources::{
         account_calendar::AccountCalendar,
+        account_notification::AccountNotification,
+        authentication_event::AuthenticationEvent,
+        authentication_provider::AuthenticationProvider,
         content_export::{ContentExport, ContentExportParams},
         content_migration::{ContentMigration, Migrator},
         enrollment::Enrollment,
@@ -18,6 +21,7 @@ use crate::{
         outcome::{OutcomeGroup, OutcomeImport, OutcomeLink, UpdateOutcomeGroupParams},
         role::{Role, RoleParams},
         rubric::{Rubric, RubricParams},
+        scope::Scope,
         sis_import::SisImport,
         user::User,
     },
@@ -809,7 +813,7 @@ impl Account {
     ///
     /// # Canvas API
     /// `GET /api/v1/accounts/:id/authentication_providers`
-    pub fn get_authentication_providers(&self) -> PageStream<serde_json::Value> {
+    pub fn get_authentication_providers(&self) -> PageStream<AuthenticationProvider> {
         PageStream::new(
             Arc::clone(self.req()),
             &format!("accounts/{}/authentication_providers", self.id),
@@ -948,7 +952,7 @@ impl Account {
     ///
     /// # Canvas API
     /// `GET /api/v1/audit/authentication/accounts/:id`
-    pub fn get_authentication_events(&self) -> PageStream<serde_json::Value> {
+    pub fn get_authentication_events(&self) -> PageStream<AuthenticationEvent> {
         PageStream::new(
             Arc::clone(self.req()),
             &format!("audit/authentication/accounts/{}", self.id),
@@ -1113,7 +1117,7 @@ impl Account {
     pub async fn get_global_notification(
         &self,
         notification_id: u64,
-    ) -> Result<serde_json::Value> {
+    ) -> Result<AccountNotification> {
         self.req()
             .get(
                 &format!(
@@ -1129,7 +1133,7 @@ impl Account {
     ///
     /// # Canvas API
     /// `GET /api/v1/accounts/:account_id/users/:user_id/account_notifications`
-    pub fn get_user_notifications(&self, user_id: u64) -> PageStream<serde_json::Value> {
+    pub fn get_user_notifications(&self, user_id: u64) -> PageStream<AccountNotification> {
         PageStream::new(
             Arc::clone(self.req()),
             &format!(
@@ -1167,7 +1171,7 @@ impl Account {
     pub async fn add_authentication_provider(
         &self,
         params: &[(String, String)],
-    ) -> Result<serde_json::Value> {
+    ) -> Result<AuthenticationProvider> {
         self.req()
             .post(
                 &format!("accounts/{}/authentication_providers", self.id),
@@ -1183,7 +1187,7 @@ impl Account {
     pub async fn get_authentication_provider(
         &self,
         provider_id: u64,
-    ) -> Result<serde_json::Value> {
+    ) -> Result<AuthenticationProvider> {
         self.req()
             .get(
                 &format!(
@@ -1199,7 +1203,7 @@ impl Account {
     ///
     /// # Canvas API
     /// `GET /api/v1/accounts/:account_id/scopes`
-    pub fn get_scopes(&self) -> PageStream<serde_json::Value> {
+    pub fn get_scopes(&self) -> PageStream<Scope> {
         PageStream::new(
             Arc::clone(self.req()),
             &format!("accounts/{}/scopes", self.id),

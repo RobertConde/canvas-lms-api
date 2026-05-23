@@ -614,8 +614,8 @@ async fn test_get_global_notification() {
         .await;
 
     let result = account.get_global_notification(7).await.unwrap();
-    assert_eq!(result["id"], 7);
-    assert_eq!(result["subject"], "Maintenance");
+    assert_eq!(result.id, Some(7));
+    assert_eq!(result.subject.as_deref(), Some("Maintenance"));
 }
 
 #[tokio::test]
@@ -634,7 +634,7 @@ async fn test_get_user_notifications() {
 
     let notifs = account.get_user_notifications(42).collect_all().await.unwrap();
     assert_eq!(notifs.len(), 2);
-    assert_eq!(notifs[0]["subject"], "Welcome");
+    assert_eq!(notifs[0].subject.as_deref(), Some("Welcome"));
 }
 
 #[tokio::test]
@@ -672,7 +672,7 @@ async fn test_add_authentication_provider() {
 
     let params = vec![("auth_type".to_string(), "ldap".to_string())];
     let result = account.add_authentication_provider(&params).await.unwrap();
-    assert_eq!(result["auth_type"], "ldap");
+    assert_eq!(result.auth_type.as_deref(), Some("ldap"));
 }
 
 #[tokio::test]
@@ -691,8 +691,8 @@ async fn test_get_authentication_provider() {
         .await;
 
     let result = account.get_authentication_provider(3).await.unwrap();
-    assert_eq!(result["id"], 3);
-    assert_eq!(result["auth_type"], "ldap");
+    assert_eq!(result.id, Some(3));
+    assert_eq!(result.auth_type.as_deref(), Some("ldap"));
 }
 
 #[tokio::test]
@@ -710,7 +710,7 @@ async fn test_get_scopes() {
 
     let scopes = account.get_scopes().collect_all().await.unwrap();
     assert_eq!(scopes.len(), 1);
-    assert_eq!(scopes[0]["resource"], "courses");
+    assert_eq!(scopes[0].resource.as_deref(), Some("courses"));
 }
 
 #[tokio::test]

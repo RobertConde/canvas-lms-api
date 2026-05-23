@@ -1,4 +1,9 @@
-use crate::{error::Result, http::Requester, pagination::PageStream};
+use crate::{
+    error::Result,
+    http::Requester,
+    pagination::PageStream,
+    resources::authentication_event::AuthenticationEvent,
+};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
@@ -60,7 +65,7 @@ impl Login {
     ///
     /// # Canvas API
     /// `GET /api/v1/audit/authentication/logins/:id`
-    pub fn get_authentication_events(&self) -> PageStream<serde_json::Value> {
+    pub fn get_authentication_events(&self) -> PageStream<AuthenticationEvent> {
         PageStream::new(
             Arc::clone(self.req()),
             &format!("audit/authentication/logins/{}", self.id),

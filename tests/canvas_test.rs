@@ -591,7 +591,7 @@ async fn test_get_comm_messages() {
     let canvas = Canvas::new(&server.uri(), "test-token").unwrap();
     let messages = canvas.get_comm_messages(42).collect_all().await.unwrap();
     assert_eq!(messages.len(), 1);
-    assert_eq!(messages[0]["subject"], "Assignment due");
+    assert_eq!(messages[0].subject.as_deref(), Some("Assignment due"));
 }
 
 #[tokio::test]

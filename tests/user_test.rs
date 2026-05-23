@@ -428,7 +428,7 @@ async fn test_user_create_pairing_code() {
         .await;
 
     let code = user.create_pairing_code().await.unwrap();
-    assert_eq!(code["code"], "ABC123");
+    assert_eq!(code.code.as_deref(), Some("ABC123"));
 }
 
 #[tokio::test]
@@ -450,7 +450,7 @@ async fn test_user_get_authentication_events() {
         .await
         .unwrap();
     assert_eq!(events.len(), 1);
-    assert_eq!(events[0]["event_type"], "login");
+    assert_eq!(events[0].event_type.as_deref(), Some("login"));
 }
 
 #[tokio::test]
@@ -918,7 +918,7 @@ async fn test_user_get_licenses() {
 
     let licenses = user.get_licenses().collect_all().await.unwrap();
     assert_eq!(licenses.len(), 2);
-    assert_eq!(licenses[0]["id"], "private");
+    assert_eq!(licenses[0].id.as_deref(), Some("private"));
 }
 
 #[tokio::test]
@@ -947,8 +947,8 @@ async fn test_user_set_usage_rights() {
         ])
         .await
         .unwrap();
-    assert_eq!(result["use_justification"], "fair_use");
-    assert_eq!(result["message"], "2 files updated");
+    assert_eq!(result.use_justification.as_deref(), Some("fair_use"));
+    assert_eq!(result.message.as_deref(), Some("2 files updated"));
 }
 
 #[tokio::test]
@@ -972,7 +972,7 @@ async fn test_user_remove_usage_rights() {
         ])
         .await
         .unwrap();
-    assert_eq!(result["message"], "2 files updated");
+    assert_eq!(result.message.as_deref(), Some("2 files updated"));
 }
 
 

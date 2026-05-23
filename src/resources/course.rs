@@ -13,9 +13,12 @@ use crate::{
         discussion_topic::DiscussionTopic,
         enrollment::Enrollment,
         external_tool::{ExternalTool, ExternalToolParams},
+        external_feed::ExternalFeed,
         feature::{Feature, FeatureFlag},
         file::File,
         folder::Folder,
+        license::License,
+        usage_rights::UsageRights,
         grade_change_log::GradeChangeEvent,
         gradebook_history::{Day, Grader, SubmissionHistory, SubmissionVersion},
         grading_period::GradingPeriod,
@@ -1494,7 +1497,7 @@ impl Course {
     ///
     /// # Canvas API
     /// `PUT /api/v1/courses/:id/usage_rights`
-    pub async fn set_usage_rights(&self, params: &[(String, String)]) -> Result<serde_json::Value> {
+    pub async fn set_usage_rights(&self, params: &[(String, String)]) -> Result<UsageRights> {
         self.req()
             .put(&format!("courses/{}/usage_rights", self.id), params)
             .await
@@ -1507,7 +1510,7 @@ impl Course {
     pub async fn remove_usage_rights(
         &self,
         params: &[(String, String)],
-    ) -> Result<serde_json::Value> {
+    ) -> Result<UsageRights> {
         self.req()
             .delete(&format!("courses/{}/usage_rights", self.id), params)
             .await
@@ -1517,7 +1520,7 @@ impl Course {
     ///
     /// # Canvas API
     /// `GET /api/v1/courses/:id/content_licenses`
-    pub fn get_licenses(&self) -> PageStream<serde_json::Value> {
+    pub fn get_licenses(&self) -> PageStream<License> {
         PageStream::new(
             Arc::clone(self.req()),
             &format!("courses/{}/content_licenses", self.id),
@@ -1533,11 +1536,17 @@ impl Course {
     ///
     /// # Canvas API
     /// `GET /api/v1/courses/:id/external_feeds`
-    pub fn get_external_feeds(&self) -> PageStream<serde_json::Value> {
-        PageStream::new(
+    pub fn get_external_feeds(&self) -> PageStream<ExternalFeed> {
+        let context = format!("courses/{}", self.id);
+        PageStream::new_with_injector(
             Arc::clone(self.req()),
             &format!("courses/{}/external_feeds", self.id),
             vec![],
+            move |mut f: ExternalFeed, req| {
+                f.requester = Some(Arc::clone(&req));
+                f.context = Some(context.clone());
+                f
+            },
         )
     }
 
@@ -1545,24 +1554,32 @@ impl Course {
     ///
     /// # Canvas API
     /// `POST /api/v1/courses/:id/external_feeds`
-    pub async fn create_external_feed(&self, url: &str) -> Result<serde_json::Value> {
+    pub async fn create_external_feed(&self, url: &str) -> Result<ExternalFeed> {
         let params = vec![("url".to_string(), url.to_string())];
-        self.req()
+        let mut f: ExternalFeed = self
+            .req()
             .post(&format!("courses/{}/external_feeds", self.id), &params)
-            .await
+            .await?;
+        f.requester = self.requester.clone();
+        f.context = Some(format!("courses/{}", self.id));
+        Ok(f)
     }
 
     /// Delete an external feed from this course.
     ///
     /// # Canvas API
     /// `DELETE /api/v1/courses/:id/external_feeds/:feed_id`
-    pub async fn delete_external_feed(&self, feed_id: u64) -> Result<serde_json::Value> {
-        self.req()
+    pub async fn delete_external_feed(&self, feed_id: u64) -> Result<ExternalFeed> {
+        let mut f: ExternalFeed = self
+            .req()
             .delete(
                 &format!("courses/{}/external_feeds/{feed_id}", self.id),
                 &[],
             )
-            .await
+            .await?;
+        f.requester = self.requester.clone();
+        f.context = Some(format!("courses/{}", self.id));
+        Ok(f)
     }
 
     // -------------------------------------------------------------------------

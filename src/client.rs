@@ -8,6 +8,7 @@ use crate::{
         account_calendar::AccountCalendar,
         appointment_group::{AppointmentGroup, AppointmentGroupParams},
         calendar_event::{CalendarEvent, CalendarEventParams},
+        comm_message::CommMessage,
         conversation::{Conversation, ConversationParams},
         course::Course,
         eportfolio::EPortfolio,
@@ -878,7 +879,7 @@ impl Canvas {
     ///
     /// # Canvas API
     /// `GET /api/v1/comm_messages`
-    pub fn get_comm_messages(&self, user_id: u64) -> PageStream<serde_json::Value> {
+    pub fn get_comm_messages(&self, user_id: u64) -> PageStream<CommMessage> {
         let params = vec![("user_id".to_string(), user_id.to_string())];
         PageStream::new(Arc::clone(&self.requester), "comm_messages", params)
     }

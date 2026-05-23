@@ -5,12 +5,17 @@ use crate::{
     params::wrap_params,
     resources::{
         assignment::Assignment,
+        authentication_event::AuthenticationEvent,
         communication_channel::CommunicationChannel,
         content_migration::{ContentMigration, Migrator},
         course::Course,
         enrollment::Enrollment,
         file::File,
         folder::Folder,
+        license::License,
+        page_view::PageView,
+        pairing_code::PairingCode,
+        usage_rights::UsageRights,
     },
 };
 
@@ -167,7 +172,7 @@ impl User {
     ///
     /// # Canvas API
     /// `GET /api/v1/users/:id/page_views`
-    pub fn get_page_views(&self) -> PageStream<serde_json::Value> {
+    pub fn get_page_views(&self) -> PageStream<PageView> {
         PageStream::new(
             Arc::clone(self.req()),
             &format!("users/{}/page_views", self.id),
@@ -410,7 +415,7 @@ impl User {
     ///
     /// # Canvas API
     /// `POST /api/v1/users/:id/observer_pairing_codes`
-    pub async fn create_pairing_code(&self) -> Result<serde_json::Value> {
+    pub async fn create_pairing_code(&self) -> Result<PairingCode> {
         self.req()
             .post(&format!("users/{}/observer_pairing_codes", self.id), &[])
             .await
@@ -420,7 +425,7 @@ impl User {
     ///
     /// # Canvas API
     /// `GET /api/v1/audit/authentication/users/:id`
-    pub fn get_authentication_events(&self) -> PageStream<serde_json::Value> {
+    pub fn get_authentication_events(&self) -> PageStream<AuthenticationEvent> {
         PageStream::new(
             Arc::clone(self.req()),
             &format!("audit/authentication/users/{}", self.id),
@@ -718,7 +723,7 @@ impl User {
     ///
     /// # Canvas API
     /// `GET /api/v1/users/:id/content_licenses`
-    pub fn get_licenses(&self) -> PageStream<serde_json::Value> {
+    pub fn get_licenses(&self) -> PageStream<License> {
         PageStream::new(
             Arc::clone(self.req()),
             &format!("users/{}/content_licenses", self.id),
@@ -730,7 +735,7 @@ impl User {
     ///
     /// # Canvas API
     /// `PUT /api/v1/users/:id/usage_rights`
-    pub async fn set_usage_rights(&self, params: &[(String, String)]) -> Result<serde_json::Value> {
+    pub async fn set_usage_rights(&self, params: &[(String, String)]) -> Result<UsageRights> {
         self.req()
             .put(&format!("users/{}/usage_rights", self.id), params)
             .await
@@ -743,7 +748,7 @@ impl User {
     pub async fn remove_usage_rights(
         &self,
         params: &[(String, String)],
-    ) -> Result<serde_json::Value> {
+    ) -> Result<UsageRights> {
         self.req()
             .delete(&format!("users/{}/usage_rights", self.id), params)
             .await

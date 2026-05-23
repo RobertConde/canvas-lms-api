@@ -253,7 +253,7 @@ async fn test_account_get_authentication_providers() {
         .await
         .unwrap();
     assert_eq!(providers.len(), 2);
-    assert_eq!(providers[0]["auth_type"], "ldap");
+    assert_eq!(providers[0].auth_type.as_deref(), Some("ldap"));
 }
 
 #[tokio::test]
@@ -475,6 +475,6 @@ async fn test_account_get_authentication_events() {
         .await
         .unwrap();
     assert_eq!(events.len(), 2);
-    assert_eq!(events[0]["event_type"], "login");
-    assert_eq!(events[1]["event_type"], "logout");
+    assert_eq!(events[0].event_type.as_deref(), Some("login"));
+    assert_eq!(events[1].event_type.as_deref(), Some("logout"));
 }

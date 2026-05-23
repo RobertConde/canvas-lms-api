@@ -4,8 +4,9 @@ use crate::{
     pagination::PageStream,
     params::wrap_params,
     resources::{
-        collaboration::Collaboration, discussion_topic::DiscussionTopic, file::File,
-        folder::Folder, page::Page, progress::Progress, user::User,
+        collaboration::Collaboration, discussion_topic::DiscussionTopic,
+        external_feed::ExternalFeed, file::File, folder::Folder, license::License,
+        page::Page, progress::Progress, usage_rights::UsageRights, user::User,
     },
 };
 use serde::{Deserialize, Serialize};
@@ -617,11 +618,17 @@ impl Group {
     ///
     /// # Canvas API
     /// `GET /api/v1/groups/:id/external_feeds`
-    pub fn get_external_feeds(&self) -> PageStream<serde_json::Value> {
-        PageStream::new(
+    pub fn get_external_feeds(&self) -> PageStream<ExternalFeed> {
+        let group_id = self.id;
+        PageStream::new_with_injector(
             Arc::clone(self.req()),
-            &format!("groups/{}/external_feeds", self.id),
+            &format!("groups/{group_id}/external_feeds"),
             vec![],
+            move |mut f: ExternalFeed, req| {
+                f.requester = Some(Arc::clone(&req));
+                f.context = Some(format!("groups/{group_id}"));
+                f
+            },
         )
     }
 
@@ -629,18 +636,23 @@ impl Group {
     ///
     /// # Canvas API
     /// `POST /api/v1/groups/:id/external_feeds`
-    pub async fn create_external_feed(&self, url: &str) -> Result<serde_json::Value> {
+    pub async fn create_external_feed(&self, url: &str) -> Result<ExternalFeed> {
+        let group_id = self.id;
         let params = vec![("url".to_string(), url.to_string())];
-        self.req()
-            .post(&format!("groups/{}/external_feeds", self.id), &params)
-            .await
+        let mut f: ExternalFeed = self
+            .req()
+            .post(&format!("groups/{group_id}/external_feeds"), &params)
+            .await?;
+        f.requester = self.requester.clone();
+        f.context = Some(format!("groups/{group_id}"));
+        Ok(f)
     }
 
     /// Delete an external feed from this group.
     ///
     /// # Canvas API
     /// `DELETE /api/v1/groups/:id/external_feeds/:feed_id`
-    pub async fn delete_external_feed(&self, feed_id: u64) -> Result<serde_json::Value> {
+    pub async fn delete_external_feed(&self, feed_id: u64) -> Result<ExternalFeed> {
         self.req()
             .delete(&format!("groups/{}/external_feeds/{feed_id}", self.id), &[])
             .await
@@ -663,7 +675,7 @@ impl Group {
     ///
     /// # Canvas API
     /// `PUT /api/v1/groups/:id/usage_rights`
-    pub async fn set_usage_rights(&self, params: &[(String, String)]) -> Result<serde_json::Value> {
+    pub async fn set_usage_rights(&self, params: &[(String, String)]) -> Result<UsageRights> {
         self.req()
             .put(&format!("groups/{}/usage_rights", self.id), params)
             .await
@@ -676,7 +688,7 @@ impl Group {
     pub async fn remove_usage_rights(
         &self,
         params: &[(String, String)],
-    ) -> Result<serde_json::Value> {
+    ) -> Result<UsageRights> {
         self.req()
             .delete(&format!("groups/{}/usage_rights", self.id), params)
             .await
@@ -686,7 +698,7 @@ impl Group {
     ///
     /// # Canvas API
     /// `GET /api/v1/groups/:id/content_licenses`
-    pub fn get_licenses(&self) -> PageStream<serde_json::Value> {
+    pub fn get_licenses(&self) -> PageStream<License> {
         PageStream::new(
             Arc::clone(self.req()),
             &format!("groups/{}/content_licenses", self.id),

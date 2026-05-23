@@ -978,3 +978,393 @@ async fn test_course_get_outcome_import_status() {
     assert_eq!(import.id, 42);
     assert_eq!(import.workflow_state.as_deref(), Some("succeeded"));
 }
+
+// ============================================================================
+// v0.8.0 Batch 3 — Missing Course methods
+// ============================================================================
+
+#[tokio::test]
+async fn test_get_single_grading_standard() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/grading_standards/5"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 5,
+            "title": "Letter Grade",
+            "context_type": "Course"
+        })))
+        .mount(&server)
+        .await;
+
+    let gs = course.get_single_grading_standard(5).await.unwrap();
+    assert_eq!(gs.title.as_deref(), Some("Letter Grade"));
+}
+
+#[tokio::test]
+async fn test_get_assignment_overrides() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/assignments/overrides"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"id": 10, "assignment_id": 1, "title": "Section Override"},
+            {"id": 11, "assignment_id": 2, "title": "Student Override"}
+        ])))
+        .mount(&server)
+        .await;
+
+    let overrides = course.get_assignment_overrides(&[1, 2]).collect_all().await.unwrap();
+    assert_eq!(overrides.len(), 2);
+    assert_eq!(overrides[0].id, 10);
+}
+
+#[tokio::test]
+async fn test_create_assignment_overrides() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("POST"))
+        .and(path("/api/v1/courses/1/assignments/overrides"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"id": 20, "assignment_id": 1, "title": "Section Override"}
+        ])))
+        .mount(&server)
+        .await;
+
+    let params = vec![
+        ("assignment_overrides[][assignment_id]".to_string(), "1".to_string()),
+    ];
+    let overrides = course.create_assignment_overrides(&params).await.unwrap();
+    assert_eq!(overrides.len(), 1);
+    assert_eq!(overrides[0].id, 20);
+}
+
+#[tokio::test]
+async fn test_update_assignment_overrides() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("PUT"))
+        .and(path("/api/v1/courses/1/assignments/overrides"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"id": 10, "assignment_id": 1, "title": "Updated Override"}
+        ])))
+        .mount(&server)
+        .await;
+
+    let params = vec![
+        ("assignment_overrides[][id]".to_string(), "10".to_string()),
+    ];
+    let overrides = course.update_assignment_overrides(&params).await.unwrap();
+    assert_eq!(overrides.len(), 1);
+    assert_eq!(overrides[0].id, 10);
+}
+
+#[tokio::test]
+async fn test_get_assignments_for_group() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/assignment_groups/5/assignments"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"id": 100, "name": "Essay 1", "assignment_group_id": 5},
+            {"id": 101, "name": "Essay 2", "assignment_group_id": 5}
+        ])))
+        .mount(&server)
+        .await;
+
+    let assignments = course.get_assignments_for_group(5).collect_all().await.unwrap();
+    assert_eq!(assignments.len(), 2);
+    assert_eq!(assignments[0].id, 100);
+    assert_eq!(assignments[0].name.as_deref(), Some("Essay 1"));
+}
+
+#[tokio::test]
+async fn test_get_all_outcome_links_in_context() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/outcome_group_links"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"outcome": {"id": 1, "title": "Critical Thinking"}, "context_type": "Course"}
+        ])))
+        .mount(&server)
+        .await;
+
+    let links = course.get_all_outcome_links_in_context().collect_all().await.unwrap();
+    assert_eq!(links.len(), 1);
+}
+
+#[tokio::test]
+async fn test_get_todo_items() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/todo"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"type": "grading", "assignment": {"id": 1, "name": "Paper"}},
+            {"type": "submitting", "assignment": {"id": 2, "name": "Quiz"}}
+        ])))
+        .mount(&server)
+        .await;
+
+    let items = course.get_todo_items().collect_all().await.unwrap();
+    assert_eq!(items.len(), 2);
+    assert_eq!(items[0]["type"], "grading");
+}
+
+#[tokio::test]
+async fn test_create_epub_export() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("POST"))
+        .and(path("/api/v1/courses/1/epub_exports"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 7,
+            "workflow_state": "created",
+            "course_id": 1
+        })))
+        .mount(&server)
+        .await;
+
+    let result = course.create_epub_export().await.unwrap();
+    assert_eq!(result["id"], 7);
+    assert_eq!(result["workflow_state"], "created");
+}
+
+#[tokio::test]
+async fn test_get_epub_export() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/epub_exports/7"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 7,
+            "workflow_state": "generated",
+            "course_id": 1
+        })))
+        .mount(&server)
+        .await;
+
+    let result = course.get_epub_export(7).await.unwrap();
+    assert_eq!(result["id"], 7);
+    assert_eq!(result["workflow_state"], "generated");
+}
+
+#[tokio::test]
+async fn test_column_data_bulk_update() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("PUT"))
+        .and(path("/api/v1/courses/1/custom_gradebook_column_data"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 10,
+            "workflow_state": "queued",
+            "completion": 0
+        })))
+        .mount(&server)
+        .await;
+
+    let params = vec![("column_data[][column_id]".to_string(), "1".to_string())];
+    let progress = course.column_data_bulk_update(&params).await.unwrap();
+    assert_eq!(progress.id, 10);
+}
+
+#[tokio::test]
+async fn test_query_audit_by_course() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/audit/course/courses/1"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"course_id": 1, "event_type": "created", "user_id": 5}
+        ])))
+        .mount(&server)
+        .await;
+
+    let events = course.query_audit_by_course().collect_all().await.unwrap();
+    assert_eq!(events.len(), 1);
+    assert_eq!(events[0]["event_type"], "created");
+}
+
+#[tokio::test]
+async fn test_get_course_level_assignment_data() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/analytics/assignments"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"assignment_id": 1, "title": "Essay", "due_at": "2024-03-01T00:00:00Z"}
+        ])))
+        .mount(&server)
+        .await;
+
+    let result = course.get_course_level_assignment_data().await.unwrap();
+    assert!(result.is_array());
+}
+
+#[tokio::test]
+async fn test_get_course_level_participation_data() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/analytics/activity"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"date": "2024-01-01", "participations": 10, "views": 50}
+        ])))
+        .mount(&server)
+        .await;
+
+    let result = course.get_course_level_participation_data().await.unwrap();
+    assert!(result.is_array());
+}
+
+#[tokio::test]
+async fn test_get_course_level_student_summary_data() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/analytics/student_summaries"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"user_id": 42, "participations": 5, "page_views": 25}
+        ])))
+        .mount(&server)
+        .await;
+
+    let summaries = course.get_course_level_student_summary_data().collect_all().await.unwrap();
+    assert_eq!(summaries.len(), 1);
+    assert_eq!(summaries[0]["user_id"], 42);
+}
+
+#[tokio::test]
+async fn test_get_user_in_a_course_level_assignment_data() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/analytics/users/42/assignments"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"assignment_id": 1, "submission": {"score": 95, "submitted_at": "2024-02-01T00:00:00Z"}}
+        ])))
+        .mount(&server)
+        .await;
+
+    let result = course
+        .get_user_in_a_course_level_assignment_data(42)
+        .await
+        .unwrap();
+    assert!(result.is_array());
+}
+
+#[tokio::test]
+async fn test_get_user_in_a_course_level_messaging_data() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/analytics/users/42/communication"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"date": "2024-01-15", "sent": 2, "received": 3}
+        ])))
+        .mount(&server)
+        .await;
+
+    let result = course
+        .get_user_in_a_course_level_messaging_data(42)
+        .await
+        .unwrap();
+    assert!(result.is_array());
+}
+
+#[tokio::test]
+async fn test_get_user_in_a_course_level_participation_data() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/analytics/users/42/activity"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "participations": [{"created_at": "2024-01-01T10:00:00Z"}],
+            "page_views": {"2024-01-01": {"count": 5}}
+        })))
+        .mount(&server)
+        .await;
+
+    let result = course
+        .get_user_in_a_course_level_participation_data(42)
+        .await
+        .unwrap();
+    assert!(result.is_object());
+}
+
+#[tokio::test]
+async fn test_smartsearch() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/smartsearch"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"id": 1, "title": "Week 1 Notes", "body": "Introduction to the course"}
+        ])))
+        .mount(&server)
+        .await;
+
+    let results = course.smartsearch("introduction").collect_all().await.unwrap();
+    assert_eq!(results.len(), 1);
+    assert_eq!(results[0]["title"], "Week 1 Notes");
+}
+
+#[tokio::test]
+async fn test_get_quiz_overrides() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/quizzes/assignment_overrides"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"quiz_id": 5, "overrides": [{"id": 1, "title": "Section Override"}]}
+        ])))
+        .mount(&server)
+        .await;
+
+    let overrides = course.get_quiz_overrides().collect_all().await.unwrap();
+    assert_eq!(overrides.len(), 1);
+    assert_eq!(overrides[0]["quiz_id"], 5);
+}
+
+#[tokio::test]
+async fn test_set_quiz_extensions() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("POST"))
+        .and(path("/api/v1/courses/1/quiz_extensions"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "quiz_extensions": [
+                {"user_id": 42, "extra_time": 30, "extra_attempts": 1}
+            ]
+        })))
+        .mount(&server)
+        .await;
+
+    let params = vec![
+        ("quiz_extensions[][user_id]".to_string(), "42".to_string()),
+        ("quiz_extensions[][extra_time]".to_string(), "30".to_string()),
+    ];
+    let result = course.set_quiz_extensions(&params).await.unwrap();
+    assert!(result["quiz_extensions"].is_array());
+}

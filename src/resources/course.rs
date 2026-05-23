@@ -4,7 +4,7 @@ use crate::{
     pagination::PageStream,
     params::wrap_params,
     resources::{
-        assignment::{Assignment, AssignmentGroup},
+        assignment::{Assignment, AssignmentGroup, AssignmentOverride},
         blueprint::{BlueprintSubscription, BlueprintTemplate},
         collaboration::Collaboration,
         content_export::{ContentExport, ContentExportParams},
@@ -19,6 +19,7 @@ use crate::{
         gradebook_history::{Day, Grader, SubmissionHistory, SubmissionVersion},
         grading_period::GradingPeriod,
         grading_standard::GradingStandard,
+        progress::Progress,
         group::{Group, GroupCategory},
         lti_resource_link::{CreateLtiResourceLinkParams, LtiResourceLink},
         module::Module,
@@ -1615,5 +1616,327 @@ impl Course {
         import.course_id = Some(self.id);
         import.context_path = Some(context);
         Ok(import)
+    }
+
+    // -------------------------------------------------------------------------
+    // v0.8.0 Batch 3 — Missing Course methods
+    // -------------------------------------------------------------------------
+
+    /// Fetch a single grading standard by ID.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/grading_standards/:id`
+    pub async fn get_single_grading_standard(
+        &self,
+        standard_id: u64,
+    ) -> Result<GradingStandard> {
+        self.req()
+            .get(
+                &format!("courses/{}/grading_standards/{standard_id}", self.id),
+                &[],
+            )
+            .await
+    }
+
+    /// Retrieve batch assignment overrides for specific assignments in this course.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/assignments/overrides`
+    pub fn get_assignment_overrides(
+        &self,
+        assignment_ids: &[u64],
+    ) -> PageStream<AssignmentOverride> {
+        let params: Vec<(String, String)> = assignment_ids
+            .iter()
+            .map(|id| {
+                (
+                    "assignment_overrides[][assignment_id]".to_string(),
+                    id.to_string(),
+                )
+            })
+            .collect();
+        let course_id = self.id;
+        PageStream::new_with_injector(
+            Arc::clone(self.req()),
+            &format!("courses/{course_id}/assignments/overrides"),
+            params,
+            move |mut o: AssignmentOverride, req| {
+                o.requester = Some(Arc::clone(&req));
+                o.course_id = Some(course_id);
+                o
+            },
+        )
+    }
+
+    /// Create assignment overrides in batch for this course.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/courses/:course_id/assignments/overrides`
+    pub async fn create_assignment_overrides(
+        &self,
+        params: &[(String, String)],
+    ) -> Result<Vec<AssignmentOverride>> {
+        self.req()
+            .post(
+                &format!("courses/{}/assignments/overrides", self.id),
+                params,
+            )
+            .await
+    }
+
+    /// Update assignment overrides in batch for this course.
+    ///
+    /// # Canvas API
+    /// `PUT /api/v1/courses/:course_id/assignments/overrides`
+    pub async fn update_assignment_overrides(
+        &self,
+        params: &[(String, String)],
+    ) -> Result<Vec<AssignmentOverride>> {
+        self.req()
+            .put(
+                &format!("courses/{}/assignments/overrides", self.id),
+                params,
+            )
+            .await
+    }
+
+    /// Stream assignments for a specific assignment group.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/assignment_groups/:group_id/assignments`
+    pub fn get_assignments_for_group(&self, group_id: u64) -> PageStream<Assignment> {
+        let course_id = self.id;
+        PageStream::new_with_injector(
+            Arc::clone(self.req()),
+            &format!("courses/{course_id}/assignment_groups/{group_id}/assignments"),
+            vec![],
+            move |mut a: Assignment, req| {
+                a.requester = Some(Arc::clone(&req));
+                a.course_id = Some(course_id);
+                a
+            },
+        )
+    }
+
+    /// Stream all outcome links in this course context.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/outcome_group_links`
+    pub fn get_all_outcome_links_in_context(&self) -> PageStream<OutcomeLink> {
+        PageStream::new(
+            Arc::clone(self.req()),
+            &format!("courses/{}/outcome_group_links", self.id),
+            vec![],
+        )
+    }
+
+    /// Stream the current user's course-specific todo items.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/todo`
+    pub fn get_todo_items(&self) -> PageStream<serde_json::Value> {
+        PageStream::new(
+            Arc::clone(self.req()),
+            &format!("courses/{}/todo", self.id),
+            vec![],
+        )
+    }
+
+    /// Create an ePub export for this course.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/courses/:course_id/epub_exports`
+    pub async fn create_epub_export(&self) -> Result<serde_json::Value> {
+        self.req()
+            .post(&format!("courses/{}/epub_exports", self.id), &[])
+            .await
+    }
+
+    /// Fetch a single ePub export by ID.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/epub_exports/:id`
+    pub async fn get_epub_export(&self, epub_id: u64) -> Result<serde_json::Value> {
+        self.req()
+            .get(
+                &format!("courses/{}/epub_exports/{epub_id}", self.id),
+                &[],
+            )
+            .await
+    }
+
+    /// Bulk-update custom gradebook column data for this course.
+    ///
+    /// # Canvas API
+    /// `PUT /api/v1/courses/:course_id/custom_gradebook_column_data`
+    pub async fn column_data_bulk_update(
+        &self,
+        params: &[(String, String)],
+    ) -> Result<Progress> {
+        let mut p: Progress = self
+            .req()
+            .put(
+                &format!("courses/{}/custom_gradebook_column_data", self.id),
+                params,
+            )
+            .await?;
+        p.requester = self.requester.clone();
+        Ok(p)
+    }
+
+    /// Stream course audit log events for this course.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/audit/course/courses/:course_id`
+    pub fn query_audit_by_course(&self) -> PageStream<serde_json::Value> {
+        PageStream::new(
+            Arc::clone(self.req()),
+            &format!("audit/course/courses/{}", self.id),
+            vec![],
+        )
+    }
+
+    /// Return a list of assignments for this course sorted by due date.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/analytics/assignments`
+    pub async fn get_course_level_assignment_data(&self) -> Result<serde_json::Value> {
+        self.req()
+            .get(&format!("courses/{}/analytics/assignments", self.id), &[])
+            .await
+    }
+
+    /// Return page view and participation data by day for this course.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/analytics/activity`
+    pub async fn get_course_level_participation_data(&self) -> Result<serde_json::Value> {
+        self.req()
+            .get(&format!("courses/{}/analytics/activity", self.id), &[])
+            .await
+    }
+
+    /// Return per-student access summaries for this course.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/analytics/student_summaries`
+    pub fn get_course_level_student_summary_data(&self) -> PageStream<serde_json::Value> {
+        PageStream::new(
+            Arc::clone(self.req()),
+            &format!("courses/{}/analytics/student_summaries", self.id),
+            vec![],
+        )
+    }
+
+    /// Return assignment data for a specific student in this course.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/analytics/users/:user_id/assignments`
+    pub async fn get_user_in_a_course_level_assignment_data(
+        &self,
+        user_id: u64,
+    ) -> Result<serde_json::Value> {
+        self.req()
+            .get(
+                &format!(
+                    "courses/{}/analytics/users/{user_id}/assignments",
+                    self.id
+                ),
+                &[],
+            )
+            .await
+    }
+
+    /// Return messaging data for a specific student in this course.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/analytics/users/:user_id/communication`
+    pub async fn get_user_in_a_course_level_messaging_data(
+        &self,
+        user_id: u64,
+    ) -> Result<serde_json::Value> {
+        self.req()
+            .get(
+                &format!(
+                    "courses/{}/analytics/users/{user_id}/communication",
+                    self.id
+                ),
+                &[],
+            )
+            .await
+    }
+
+    /// Return participation data for a specific student in this course.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/analytics/users/:user_id/activity`
+    pub async fn get_user_in_a_course_level_participation_data(
+        &self,
+        user_id: u64,
+    ) -> Result<serde_json::Value> {
+        self.req()
+            .get(
+                &format!(
+                    "courses/{}/analytics/users/{user_id}/activity",
+                    self.id
+                ),
+                &[],
+            )
+            .await
+    }
+
+    /// AI-powered course content search.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/smartsearch`
+    pub fn smartsearch(&self, q: &str) -> PageStream<serde_json::Value> {
+        let params = vec![("q".to_string(), q.to_string())];
+        PageStream::new(
+            Arc::clone(self.req()),
+            &format!("courses/{}/smartsearch", self.id),
+            params,
+        )
+    }
+
+    /// Stream quiz assignment overrides for this course.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/quizzes/assignment_overrides`
+    pub fn get_quiz_overrides(&self) -> PageStream<serde_json::Value> {
+        PageStream::new(
+            Arc::clone(self.req()),
+            &format!("courses/{}/quizzes/assignment_overrides", self.id),
+            vec![],
+        )
+    }
+
+    /// Set quiz extensions for students in this course.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/courses/:course_id/quiz_extensions`
+    pub async fn set_quiz_extensions(
+        &self,
+        params: &[(String, String)],
+    ) -> Result<serde_json::Value> {
+        self.req()
+            .post(&format!("courses/{}/quiz_extensions", self.id), params)
+            .await
+    }
+
+    /// Apply New Quizzes accommodations at the course level.
+    ///
+    /// # Canvas API
+    /// `POST /api/quiz/v1/courses/:course_id/accommodations`
+    #[cfg(feature = "new-quizzes")]
+    pub async fn set_new_quizzes_accommodations(
+        &self,
+        body: &serde_json::Value,
+    ) -> Result<serde_json::Value> {
+        self.req()
+            .nq_post(
+                &format!("courses/{}/accommodations", self.id),
+                body,
+            )
+            .await
     }
 }

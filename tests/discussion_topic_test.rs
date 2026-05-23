@@ -406,9 +406,6 @@ async fn test_entry_rate_invalid() {
     assert!(result.is_err());
 }
 
-// ============================================================================
-// v0.8.0 Batch 5 — DiscussionTopic::get_parent
-// ============================================================================
 
 #[tokio::test]
 async fn test_discussion_topic_get_parent_course() {

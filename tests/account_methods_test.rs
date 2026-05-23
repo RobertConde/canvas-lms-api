@@ -437,9 +437,6 @@ async fn test_create_outcome_group_on_account() {
     assert_eq!(group.title.as_deref(), Some("New Outcomes"));
 }
 
-// ============================================================================
-// v0.8.0 Batch 2 — Missing Account methods
-// ============================================================================
 
 #[tokio::test]
 async fn test_account_delete() {

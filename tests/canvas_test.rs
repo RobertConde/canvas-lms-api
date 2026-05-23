@@ -268,9 +268,6 @@ async fn test_get_outcome() {
     assert_eq!(outcome.points_possible, Some(5.0));
 }
 
-// ============================================================================
-// v0.8.0 Batch 1 — Missing Canvas client methods
-// ============================================================================
 
 #[tokio::test]
 async fn test_get_group_category() {

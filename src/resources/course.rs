@@ -15,6 +15,7 @@ use crate::{
         external_tool::{ExternalTool, ExternalToolParams},
         feature::{Feature, FeatureFlag},
         file::File,
+        folder::Folder,
         grade_change_log::GradeChangeEvent,
         gradebook_history::{Day, Grader, SubmissionHistory, SubmissionVersion},
         grading_period::GradingPeriod,
@@ -1938,5 +1939,213 @@ impl Course {
                 body,
             )
             .await
+    }
+
+    /// Get a single file in this course.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/files/:id`
+    pub async fn get_file(&self, file_id: u64) -> Result<File> {
+        let mut f: File = self
+            .req()
+            .get(&format!("courses/{}/files/{file_id}", self.id), &[])
+            .await?;
+        f.requester = self.requester.clone();
+        Ok(f)
+    }
+
+    /// Return the total and used storage quota for this course.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/files/quota`
+    pub async fn get_file_quota(&self) -> Result<serde_json::Value> {
+        self.req()
+            .get(&format!("courses/{}/files/quota", self.id), &[])
+            .await
+    }
+
+    /// Get a single folder in this course by id.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/folders/:id`
+    pub async fn get_folder(&self, folder_id: u64) -> Result<Folder> {
+        let mut f: Folder = self
+            .req()
+            .get(&format!("courses/{}/folders/{folder_id}", self.id), &[])
+            .await?;
+        f.requester = self.requester.clone();
+        Ok(f)
+    }
+
+    /// Stream all folders for this course (flat list including subfolders).
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/folders`
+    pub fn get_folders(&self) -> PageStream<Folder> {
+        let course_id = self.id;
+        PageStream::new_with_injector(
+            Arc::clone(self.req()),
+            &format!("courses/{course_id}/folders"),
+            vec![],
+            move |mut f: Folder, req| {
+                f.requester = Some(Arc::clone(&req));
+                f
+            },
+        )
+    }
+
+    /// Create a folder in this course.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/courses/:course_id/folders`
+    pub async fn create_folder(&self, params: &[(String, String)]) -> Result<Folder> {
+        let mut f: Folder = self
+            .req()
+            .post(&format!("courses/{}/folders", self.id), params)
+            .await?;
+        f.requester = self.requester.clone();
+        Ok(f)
+    }
+
+    /// Create a wiki page in this course.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/courses/:course_id/pages`
+    pub async fn create_page(&self, params: &[(String, String)]) -> Result<Page> {
+        let mut p: Page = self
+            .req()
+            .post(&format!("courses/{}/pages", self.id), params)
+            .await?;
+        p.requester = self.requester.clone();
+        p.course_id = Some(self.id);
+        Ok(p)
+    }
+
+    /// Get a single grading period for this course.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/grading_periods/:id`
+    pub async fn get_grading_period(&self, period_id: u64) -> Result<GradingPeriod> {
+        #[derive(serde::Deserialize)]
+        struct Wrapper {
+            grading_periods: Vec<GradingPeriod>,
+        }
+        let mut w: Wrapper = self
+            .req()
+            .get(
+                &format!("courses/{}/grading_periods/{period_id}", self.id),
+                &[],
+            )
+            .await?;
+        let mut gp = w.grading_periods.remove(0);
+        gp.requester = self.requester.clone();
+        Ok(gp)
+    }
+
+    /// Get a single assignment group for this course.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/assignment_groups/:id`
+    pub async fn get_assignment_group(&self, group_id: u64) -> Result<AssignmentGroup> {
+        let mut ag: AssignmentGroup = self
+            .req()
+            .get(
+                &format!("courses/{}/assignment_groups/{group_id}", self.id),
+                &[],
+            )
+            .await?;
+        ag.requester = self.requester.clone();
+        ag.course_id = Some(self.id);
+        Ok(ag)
+    }
+
+    /// Create a late policy for this course.
+    ///
+    /// # Canvas API
+    /// `POST /api/v1/courses/:id/late_policy`
+    pub async fn create_late_policy(
+        &self,
+        params: &[(String, String)],
+    ) -> Result<serde_json::Value> {
+        self.req()
+            .post(&format!("courses/{}/late_policy", self.id), params)
+            .await
+    }
+
+    /// Edit the late policy for this course.
+    ///
+    /// # Canvas API
+    /// `PATCH /api/v1/courses/:id/late_policy`
+    pub async fn edit_late_policy(&self, params: &[(String, String)]) -> Result<()> {
+        self.req()
+            .patch_void(&format!("courses/{}/late_policy", self.id), params)
+            .await
+    }
+
+    /// Stream all outcome groups for this course.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/outcome_groups`
+    pub fn get_outcome_groups_in_context(&self) -> PageStream<OutcomeGroup> {
+        PageStream::new(
+            Arc::clone(self.req()),
+            &format!("courses/{}/outcome_groups", self.id),
+            vec![],
+        )
+    }
+
+    /// Get all outcome result rollups for this course (BETA).
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/outcome_rollups`
+    pub async fn get_outcome_result_rollups(&self) -> Result<serde_json::Value> {
+        self.req()
+            .get(&format!("courses/{}/outcome_rollups", self.id), &[])
+            .await
+    }
+
+    /// Stream all outcome results for this course (BETA).
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/outcome_results`
+    pub fn get_outcome_results(&self) -> PageStream<serde_json::Value> {
+        PageStream::new(
+            Arc::clone(self.req()),
+            &format!("courses/{}/outcome_results", self.id),
+            vec![],
+        )
+    }
+
+    /// Remove the course nickname for the current user.
+    ///
+    /// # Canvas API
+    /// `DELETE /api/v1/users/self/course_nicknames/:course_id`
+    pub async fn remove_nickname(&self) -> Result<serde_json::Value> {
+        self.req()
+            .delete(
+                &format!("users/self/course_nicknames/{}", self.id),
+                &[],
+            )
+            .await
+    }
+
+    /// Stream folders starting at the course root, following the given path.
+    ///
+    /// # Canvas API
+    /// `GET /api/v1/courses/:course_id/folders/by_path[/:full_path]`
+    pub fn resolve_path(&self, full_path: Option<&str>) -> PageStream<Folder> {
+        let url = match full_path {
+            Some(p) => format!("courses/{}/folders/by_path/{p}", self.id),
+            None => format!("courses/{}/folders/by_path", self.id),
+        };
+        PageStream::new_with_injector(
+            Arc::clone(self.req()),
+            &url,
+            vec![],
+            move |mut f: Folder, req| {
+                f.requester = Some(Arc::clone(&req));
+                f
+            },
+        )
     }
 }

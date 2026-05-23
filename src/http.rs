@@ -164,7 +164,25 @@ impl Requester {
         Ok(resp.json().await?)
     }
 
-    #[allow(dead_code)] // used by future resource update methods
+    pub(crate) async fn patch_void(
+        &self,
+        endpoint: &str,
+        params: &[(String, String)],
+    ) -> Result<()> {
+        let url = self.base_url.join(endpoint)?;
+        info!("PATCH {url}");
+        let resp = self
+            .client
+            .patch(url)
+            .header("Authorization", self.auth_header())
+            .form(params)
+            .send()
+            .await?;
+        check_status(resp).await?;
+        Ok(())
+    }
+
+    #[allow(dead_code)]
     pub(crate) async fn patch<T: DeserializeOwned>(
         &self,
         endpoint: &str,

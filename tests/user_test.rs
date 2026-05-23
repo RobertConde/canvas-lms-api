@@ -975,9 +975,6 @@ async fn test_user_remove_usage_rights() {
     assert_eq!(result["message"], "2 files updated");
 }
 
-// ============================================================================
-// v0.8.0 Batch 5 — User::get_assignments + User::moderate_all_eportfolios
-// ============================================================================
 
 #[tokio::test]
 async fn test_user_get_assignments() {

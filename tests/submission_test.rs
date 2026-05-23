@@ -189,9 +189,6 @@ async fn test_submission_get_peer_reviews() {
     assert_eq!(prs[1].workflow_state.as_deref(), Some("completed"));
 }
 
-// ============================================================================
-// v0.8.0 Batch 4 — PeerReview + upload_comment
-// ============================================================================
 
 #[tokio::test]
 async fn test_submission_upload_comment() {

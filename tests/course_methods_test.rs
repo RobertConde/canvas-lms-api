@@ -979,9 +979,6 @@ async fn test_course_get_outcome_import_status() {
     assert_eq!(import.workflow_state.as_deref(), Some("succeeded"));
 }
 
-// ============================================================================
-// v0.8.0 Batch 3 — Missing Course methods
-// ============================================================================
 
 #[tokio::test]
 async fn test_get_single_grading_standard() {
@@ -1367,4 +1364,307 @@ async fn test_set_quiz_extensions() {
     ];
     let result = course.set_quiz_extensions(&params).await.unwrap();
     assert!(result["quiz_extensions"].is_array());
+}
+
+
+#[tokio::test]
+async fn test_course_get_file() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/files/42"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 42, "display_name": "notes.pdf", "filename": "notes.pdf",
+            "content_type": "application/pdf", "size": 2048
+        })))
+        .mount(&server)
+        .await;
+
+    let file = course.get_file(42).await.unwrap();
+    assert_eq!(file.id, 42);
+    assert_eq!(file.display_name.as_deref(), Some("notes.pdf"));
+}
+
+#[tokio::test]
+async fn test_course_get_file_quota() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/files/quota"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "quota": 524288000,
+            "quota_used": 10485760
+        })))
+        .mount(&server)
+        .await;
+
+    let quota = course.get_file_quota().await.unwrap();
+    assert_eq!(quota["quota"], 524288000);
+}
+
+#[tokio::test]
+async fn test_course_get_folder() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/folders/7"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 7, "name": "Lecture Notes", "full_name": "course files/Lecture Notes"
+        })))
+        .mount(&server)
+        .await;
+
+    let folder = course.get_folder(7).await.unwrap();
+    assert_eq!(folder.id, 7);
+    assert_eq!(folder.name.as_deref(), Some("Lecture Notes"));
+}
+
+#[tokio::test]
+async fn test_course_get_folders() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/folders"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"id": 1, "name": "course files"},
+            {"id": 2, "name": "Submissions"}
+        ])))
+        .mount(&server)
+        .await;
+
+    let folders: Vec<_> = course.get_folders().collect_all().await.unwrap();
+    assert_eq!(folders.len(), 2);
+    assert_eq!(folders[0].id, 1);
+}
+
+#[tokio::test]
+async fn test_course_create_folder() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("POST"))
+        .and(path("/api/v1/courses/1/folders"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 99, "name": "New Folder", "full_name": "course files/New Folder"
+        })))
+        .mount(&server)
+        .await;
+
+    let folder = course
+        .create_folder(&[("name".to_string(), "New Folder".to_string())])
+        .await
+        .unwrap();
+    assert_eq!(folder.id, 99);
+    assert_eq!(folder.name.as_deref(), Some("New Folder"));
+}
+
+#[tokio::test]
+async fn test_course_create_page() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("POST"))
+        .and(path("/api/v1/courses/1/pages"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "url": "syllabus",
+            "title": "Syllabus",
+            "body": "<p>Welcome</p>"
+        })))
+        .mount(&server)
+        .await;
+
+    let page = course
+        .create_page(&[
+            ("wiki_page[title]".to_string(), "Syllabus".to_string()),
+            ("wiki_page[body]".to_string(), "<p>Welcome</p>".to_string()),
+        ])
+        .await
+        .unwrap();
+    assert_eq!(page.title.as_deref(), Some("Syllabus"));
+    assert_eq!(page.course_id, Some(1));
+}
+
+#[tokio::test]
+async fn test_course_get_grading_period() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/grading_periods/5"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "grading_periods": [{"id": 5, "title": "Q1", "weight": 25.0}]
+        })))
+        .mount(&server)
+        .await;
+
+    let gp = course.get_grading_period(5).await.unwrap();
+    assert_eq!(gp.id, 5);
+    assert_eq!(gp.title.as_deref(), Some("Q1"));
+}
+
+#[tokio::test]
+async fn test_course_get_assignment_group() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/assignment_groups/3"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 3, "name": "Homework", "group_weight": 40.0
+        })))
+        .mount(&server)
+        .await;
+
+    let ag = course.get_assignment_group(3).await.unwrap();
+    assert_eq!(ag.id, 3);
+    assert_eq!(ag.name.as_deref(), Some("Homework"));
+    assert_eq!(ag.course_id, Some(1));
+}
+
+#[tokio::test]
+async fn test_course_create_late_policy() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("POST"))
+        .and(path("/api/v1/courses/1/late_policy"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "late_policy": {"late_submission_deduction_enabled": true}
+        })))
+        .mount(&server)
+        .await;
+
+    let result = course
+        .create_late_policy(&[(
+            "late_policy[late_submission_deduction_enabled]".to_string(),
+            "true".to_string(),
+        )])
+        .await
+        .unwrap();
+    assert_eq!(result["late_policy"]["late_submission_deduction_enabled"], true);
+}
+
+#[tokio::test]
+async fn test_course_edit_late_policy() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("PATCH"))
+        .and(path("/api/v1/courses/1/late_policy"))
+        .respond_with(ResponseTemplate::new(204))
+        .mount(&server)
+        .await;
+
+    course
+        .edit_late_policy(&[(
+            "late_policy[late_submission_minimum_percent]".to_string(),
+            "50".to_string(),
+        )])
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn test_course_get_outcome_groups_in_context() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/outcome_groups"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"id": 1, "title": "Math Standards"},
+            {"id": 2, "title": "Reading Standards"}
+        ])))
+        .mount(&server)
+        .await;
+
+    let groups: Vec<_> = course
+        .get_outcome_groups_in_context()
+        .collect_all()
+        .await
+        .unwrap();
+    assert_eq!(groups.len(), 2);
+    assert_eq!(groups[0].title.as_deref(), Some("Math Standards"));
+}
+
+#[tokio::test]
+async fn test_course_get_outcome_result_rollups() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/outcome_rollups"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "rollups": [{"links": {"user": "1"}, "scores": []}]
+        })))
+        .mount(&server)
+        .await;
+
+    let result = course.get_outcome_result_rollups().await.unwrap();
+    assert!(result["rollups"].is_array());
+}
+
+#[tokio::test]
+async fn test_course_get_outcome_results() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/outcome_results"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"id": 1, "score": 4.0, "links": {"user": "1"}},
+            {"id": 2, "score": 3.0, "links": {"user": "2"}}
+        ])))
+        .mount(&server)
+        .await;
+
+    let results: Vec<_> = course.get_outcome_results().collect_all().await.unwrap();
+    assert_eq!(results.len(), 2);
+}
+
+#[tokio::test]
+async fn test_course_remove_nickname() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("DELETE"))
+        .and(path("/api/v1/users/self/course_nicknames/1"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "course_id": 1,
+            "name": "Test Course",
+            "nickname": ""
+        })))
+        .mount(&server)
+        .await;
+
+    let result = course.remove_nickname().await.unwrap();
+    assert_eq!(result["course_id"], 1);
+}
+
+#[tokio::test]
+async fn test_course_resolve_path() {
+    let server = MockServer::start().await;
+    let course = make_course(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/courses/1/folders/by_path/lectures/week1"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {"id": 1, "name": "course files"},
+            {"id": 2, "name": "lectures"},
+            {"id": 3, "name": "week1"}
+        ])))
+        .mount(&server)
+        .await;
+
+    let folders: Vec<_> = course
+        .resolve_path(Some("lectures/week1"))
+        .collect_all()
+        .await
+        .unwrap();
+    assert_eq!(folders.len(), 3);
+    assert_eq!(folders[2].name.as_deref(), Some("week1"));
 }

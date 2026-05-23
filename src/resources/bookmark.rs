@@ -1,4 +1,7 @@
-use crate::{error::{CanvasError, Result}, http::Requester};
+use crate::{
+    error::{CanvasError, Result},
+    http::Requester,
+};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 

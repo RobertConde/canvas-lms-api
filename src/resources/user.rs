@@ -749,10 +749,7 @@ impl User {
     ///
     /// # Canvas API
     /// `DELETE /api/v1/users/:id/usage_rights`
-    pub async fn remove_usage_rights(
-        &self,
-        params: &[(String, String)],
-    ) -> Result<UsageRights> {
+    pub async fn remove_usage_rights(&self, params: &[(String, String)]) -> Result<UsageRights> {
         self.req()
             .delete(&format!("users/{}/usage_rights", self.id), params)
             .await
@@ -892,9 +889,7 @@ impl CurrentUser {
     /// # Canvas API
     /// `DELETE /api/v1/users/self/favorites/courses`
     pub async fn reset_favorite_courses(&self) -> Result<()> {
-        self.req()
-            .delete_void("users/self/favorites/courses")
-            .await
+        self.req().delete_void("users/self/favorites/courses").await
     }
 
     /// Reset favorite groups to the default set.
@@ -902,9 +897,7 @@ impl CurrentUser {
     /// # Canvas API
     /// `DELETE /api/v1/users/self/favorites/groups`
     pub async fn reset_favorite_groups(&self) -> Result<()> {
-        self.req()
-            .delete_void("users/self/favorites/groups")
-            .await
+        self.req().delete_void("users/self/favorites/groups").await
     }
 
     /// Create a new bookmark.

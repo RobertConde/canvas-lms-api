@@ -268,7 +268,6 @@ async fn test_get_outcome() {
     assert_eq!(outcome.points_possible, Some(5.0));
 }
 
-
 #[tokio::test]
 async fn test_get_group_category() {
     let server = MockServer::start().await;
@@ -671,7 +670,11 @@ async fn test_get_group_participants() {
         .await;
 
     let canvas = Canvas::new(&server.uri(), "test-token").unwrap();
-    let groups = canvas.get_group_participants(10).collect_all().await.unwrap();
+    let groups = canvas
+        .get_group_participants(10)
+        .collect_all()
+        .await
+        .unwrap();
     assert_eq!(groups.len(), 2);
     assert_eq!(groups[0].id, 1);
     assert_eq!(groups[0].name.as_deref(), Some("Study Group A"));
@@ -690,7 +693,11 @@ async fn test_get_user_participants() {
         .await;
 
     let canvas = Canvas::new(&server.uri(), "test-token").unwrap();
-    let users = canvas.get_user_participants(10).collect_all().await.unwrap();
+    let users = canvas
+        .get_user_participants(10)
+        .collect_all()
+        .await
+        .unwrap();
     assert_eq!(users.len(), 2);
     assert_eq!(users[0].id, 101);
     assert_eq!(users[0].name.as_deref(), Some("Alice"));
@@ -768,7 +775,10 @@ async fn test_create_account() {
 
     let canvas = Canvas::new(&server.uri(), "test-token").unwrap();
     let account = canvas
-        .create_account(1, &[("account[name]".to_string(), "New Sub Account".to_string())])
+        .create_account(
+            1,
+            &[("account[name]".to_string(), "New Sub Account".to_string())],
+        )
         .await
         .unwrap();
     assert_eq!(account.id, 200);

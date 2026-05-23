@@ -694,10 +694,7 @@ impl Canvas {
     /// # Canvas API
     /// `GET /api/v1/global/root_outcome_group`
     pub async fn get_root_outcome_group(&self) -> Result<OutcomeGroup> {
-        let mut og: OutcomeGroup = self
-            .requester
-            .get("global/root_outcome_group", &[])
-            .await?;
+        let mut og: OutcomeGroup = self.requester.get("global/root_outcome_group", &[]).await?;
         og.requester = Some(Arc::clone(&self.requester));
         Ok(og)
     }
@@ -897,11 +894,7 @@ impl Canvas {
     ///
     /// # Canvas API
     /// `PUT /api/v1/conversations`
-    pub async fn conversations_batch_update(
-        &self,
-        ids: &[u64],
-        event: &str,
-    ) -> Result<Progress> {
+    pub async fn conversations_batch_update(&self, ids: &[u64], event: &str) -> Result<Progress> {
         let mut params: Vec<(String, String)> = ids
             .iter()
             .map(|id| ("conversation_ids[]".to_string(), id.to_string()))
@@ -1019,7 +1012,10 @@ impl Canvas {
     ) -> Result<Account> {
         let mut a: Account = self
             .requester
-            .post(&format!("accounts/{parent_account_id}/root_accounts"), params)
+            .post(
+                &format!("accounts/{parent_account_id}/root_accounts"),
+                params,
+            )
             .await?;
         a.requester = Some(Arc::clone(&self.requester));
         Ok(a)

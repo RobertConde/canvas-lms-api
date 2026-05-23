@@ -1099,11 +1099,7 @@ impl Account {
     ///
     /// # Canvas API
     /// `GET /api/v1/accounts/:account_id/reports/:report_type/:report_id`
-    pub async fn get_report(
-        &self,
-        report_type: &str,
-        report_id: u64,
-    ) -> Result<serde_json::Value> {
+    pub async fn get_report(&self, report_type: &str, report_id: u64) -> Result<serde_json::Value> {
         self.req()
             .get(
                 &format!("accounts/{}/reports/{report_type}/{report_id}", self.id),
@@ -1154,10 +1150,7 @@ impl Account {
     pub fn get_user_notifications(&self, user_id: u64) -> PageStream<AccountNotification> {
         PageStream::new(
             Arc::clone(self.req()),
-            &format!(
-                "accounts/{}/users/{user_id}/account_notifications",
-                self.id
-            ),
+            &format!("accounts/{}/users/{user_id}/account_notifications", self.id),
             vec![],
         )
     }
@@ -1375,10 +1368,7 @@ impl Account {
     ) -> Result<serde_json::Value> {
         self.req()
             .get(
-                &format!(
-                    "accounts/{}/analytics/terms/{term_id}/statistics",
-                    self.id
-                ),
+                &format!("accounts/{}/analytics/terms/{term_id}/statistics", self.id),
                 &[],
             )
             .await

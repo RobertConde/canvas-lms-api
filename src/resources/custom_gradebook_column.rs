@@ -114,7 +114,10 @@ impl CustomGradebookColumn {
         let params = vec![("order".to_string(), order_str)];
         self.req()
             .post_void_with_params(
-                &format!("courses/{}/custom_gradebook_columns/reorder", self.course_id()),
+                &format!(
+                    "courses/{}/custom_gradebook_columns/reorder",
+                    self.course_id()
+                ),
                 &params,
             )
             .await

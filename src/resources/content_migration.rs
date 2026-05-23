@@ -125,10 +125,7 @@ impl ContentMigration {
     ///
     /// # Canvas API
     /// `GET /api/v1/courses/:course_id/content_migrations/:id/selective_data`
-    pub fn get_selective_data(
-        &self,
-        params: &[(String, String)],
-    ) -> PageStream<serde_json::Value> {
+    pub fn get_selective_data(&self, params: &[(String, String)]) -> PageStream<serde_json::Value> {
         PageStream::new(
             Arc::clone(self.req()),
             &format!(

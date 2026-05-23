@@ -21,9 +21,11 @@ async fn setup_with_canvas(
 ) -> canvas_lms_api::resources::submission::Submission {
     Mock::given(method("GET"))
         .and(path("/api/v1/courses/1/assignments/2"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(
-            serde_json::json!({"id": 2, "course_id": 1, "name": "Assignment 1"}),
-        ))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_json(
+                serde_json::json!({"id": 2, "course_id": 1, "name": "Assignment 1"}),
+            ),
+        )
         .mount(server)
         .await;
     Mock::given(method("GET"))
@@ -188,7 +190,6 @@ async fn test_submission_get_peer_reviews() {
     assert_eq!(prs[0].assessor_id, Some(10));
     assert_eq!(prs[1].workflow_state.as_deref(), Some("completed"));
 }
-
 
 #[tokio::test]
 async fn test_submission_upload_comment() {

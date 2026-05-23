@@ -979,7 +979,6 @@ async fn test_course_get_outcome_import_status() {
     assert_eq!(import.workflow_state.as_deref(), Some("succeeded"));
 }
 
-
 #[tokio::test]
 async fn test_get_single_grading_standard() {
     let server = MockServer::start().await;
@@ -1013,7 +1012,11 @@ async fn test_get_assignment_overrides() {
         .mount(&server)
         .await;
 
-    let overrides = course.get_assignment_overrides(&[1, 2]).collect_all().await.unwrap();
+    let overrides = course
+        .get_assignment_overrides(&[1, 2])
+        .collect_all()
+        .await
+        .unwrap();
     assert_eq!(overrides.len(), 2);
     assert_eq!(overrides[0].id, 10);
 }
@@ -1031,9 +1034,10 @@ async fn test_create_assignment_overrides() {
         .mount(&server)
         .await;
 
-    let params = vec![
-        ("assignment_overrides[][assignment_id]".to_string(), "1".to_string()),
-    ];
+    let params = vec![(
+        "assignment_overrides[][assignment_id]".to_string(),
+        "1".to_string(),
+    )];
     let overrides = course.create_assignment_overrides(&params).await.unwrap();
     assert_eq!(overrides.len(), 1);
     assert_eq!(overrides[0].id, 20);
@@ -1052,9 +1056,7 @@ async fn test_update_assignment_overrides() {
         .mount(&server)
         .await;
 
-    let params = vec![
-        ("assignment_overrides[][id]".to_string(), "10".to_string()),
-    ];
+    let params = vec![("assignment_overrides[][id]".to_string(), "10".to_string())];
     let overrides = course.update_assignment_overrides(&params).await.unwrap();
     assert_eq!(overrides.len(), 1);
     assert_eq!(overrides[0].id, 10);
@@ -1074,7 +1076,11 @@ async fn test_get_assignments_for_group() {
         .mount(&server)
         .await;
 
-    let assignments = course.get_assignments_for_group(5).collect_all().await.unwrap();
+    let assignments = course
+        .get_assignments_for_group(5)
+        .collect_all()
+        .await
+        .unwrap();
     assert_eq!(assignments.len(), 2);
     assert_eq!(assignments[0].id, 100);
     assert_eq!(assignments[0].name.as_deref(), Some("Essay 1"));
@@ -1093,7 +1099,11 @@ async fn test_get_all_outcome_links_in_context() {
         .mount(&server)
         .await;
 
-    let links = course.get_all_outcome_links_in_context().collect_all().await.unwrap();
+    let links = course
+        .get_all_outcome_links_in_context()
+        .collect_all()
+        .await
+        .unwrap();
     assert_eq!(links.len(), 1);
 }
 
@@ -1241,7 +1251,11 @@ async fn test_get_course_level_student_summary_data() {
         .mount(&server)
         .await;
 
-    let summaries = course.get_course_level_student_summary_data().collect_all().await.unwrap();
+    let summaries = course
+        .get_course_level_student_summary_data()
+        .collect_all()
+        .await
+        .unwrap();
     assert_eq!(summaries.len(), 1);
     assert_eq!(summaries[0]["user_id"], 42);
 }
@@ -1320,7 +1334,11 @@ async fn test_smartsearch() {
         .mount(&server)
         .await;
 
-    let results = course.smartsearch("introduction").collect_all().await.unwrap();
+    let results = course
+        .smartsearch("introduction")
+        .collect_all()
+        .await
+        .unwrap();
     assert_eq!(results.len(), 1);
     assert_eq!(results[0]["title"], "Week 1 Notes");
 }
@@ -1360,12 +1378,14 @@ async fn test_set_quiz_extensions() {
 
     let params = vec![
         ("quiz_extensions[][user_id]".to_string(), "42".to_string()),
-        ("quiz_extensions[][extra_time]".to_string(), "30".to_string()),
+        (
+            "quiz_extensions[][extra_time]".to_string(),
+            "30".to_string(),
+        ),
     ];
     let result = course.set_quiz_extensions(&params).await.unwrap();
     assert!(result["quiz_extensions"].is_array());
 }
-
 
 #[tokio::test]
 async fn test_course_get_file() {
@@ -1545,7 +1565,10 @@ async fn test_course_create_late_policy() {
         )])
         .await
         .unwrap();
-    assert_eq!(result["late_policy"]["late_submission_deduction_enabled"], true);
+    assert_eq!(
+        result["late_policy"]["late_submission_deduction_enabled"],
+        true
+    );
 }
 
 #[tokio::test]

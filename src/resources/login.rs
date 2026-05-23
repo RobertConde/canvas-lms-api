@@ -1,7 +1,5 @@
 use crate::{
-    error::Result,
-    http::Requester,
-    pagination::PageStream,
+    error::Result, http::Requester, pagination::PageStream,
     resources::authentication_event::AuthenticationEvent,
 };
 use serde::{Deserialize, Serialize};

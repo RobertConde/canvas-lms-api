@@ -52,10 +52,7 @@ impl AuthenticationProvider {
     ///
     /// # Canvas API
     /// `PUT /api/v1/accounts/:account_id/authentication_providers/:id`
-    pub async fn update(
-        &self,
-        params: &[(String, String)],
-    ) -> Result<AuthenticationProvider> {
+    pub async fn update(&self, params: &[(String, String)]) -> Result<AuthenticationProvider> {
         let mut provider: AuthenticationProvider = self
             .req()
             .put(

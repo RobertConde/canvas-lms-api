@@ -317,7 +317,10 @@ async fn test_outcome_group_link_new() {
         .await;
 
     let link = group.link_new("New Outcome", &[]).await.unwrap();
-    assert_eq!(link.outcome.as_ref().and_then(|v| v["id"].as_u64()), Some(20));
+    assert_eq!(
+        link.outcome.as_ref().and_then(|v| v["id"].as_u64()),
+        Some(20)
+    );
 }
 
 #[tokio::test]
@@ -327,12 +330,14 @@ async fn test_outcome_link_get_outcome() {
 
     Mock::given(method("GET"))
         .and(path("/api/v1/courses/1/outcome_groups/10/outcomes"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([{
-            "context_id": 1,
-            "context_type": "Course",
-            "outcome": {"id": 5, "title": "Linked Outcome"},
-            "outcome_group": {"id": 10, "context_id": 1, "context_type": "Course"}
-        }])))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_json(serde_json::json!([{
+                "context_id": 1,
+                "context_type": "Course",
+                "outcome": {"id": 5, "title": "Linked Outcome"},
+                "outcome_group": {"id": 10, "context_id": 1, "context_type": "Course"}
+            }])),
+        )
         .mount(&server)
         .await;
     Mock::given(method("GET"))

@@ -1,4 +1,7 @@
-use crate::{error::{CanvasError, Result}, http::Requester};
+use crate::{
+    error::{CanvasError, Result},
+    http::Requester,
+};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;

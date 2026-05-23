@@ -12,19 +12,17 @@ use crate::{
         custom_gradebook_column::{CustomGradebookColumn, CustomGradebookColumnParams},
         discussion_topic::DiscussionTopic,
         enrollment::Enrollment,
-        external_tool::{ExternalTool, ExternalToolParams},
         external_feed::ExternalFeed,
+        external_tool::{ExternalTool, ExternalToolParams},
         feature::{Feature, FeatureFlag},
         file::File,
         folder::Folder,
-        license::License,
-        usage_rights::UsageRights,
         grade_change_log::GradeChangeEvent,
         gradebook_history::{Day, Grader, SubmissionHistory, SubmissionVersion},
         grading_period::GradingPeriod,
         grading_standard::GradingStandard,
-        progress::Progress,
         group::{Group, GroupCategory},
+        license::License,
         lti_resource_link::{CreateLtiResourceLinkParams, LtiResourceLink},
         module::Module,
         outcome::{OutcomeGroup, OutcomeImport, OutcomeLink, UpdateOutcomeGroupParams},
@@ -33,11 +31,13 @@ use crate::{
             assignment_params::CreateAssignmentParams, course_params::UpdateCourseParams,
             quiz_params::CreateQuizParams,
         },
+        progress::Progress,
         quiz::Quiz,
         rubric::{Rubric, RubricAssociation, RubricParams},
         section::Section,
         tab::Tab,
         types::WorkflowState,
+        usage_rights::UsageRights,
         user::User,
     },
 };
@@ -1519,10 +1519,7 @@ impl Course {
     ///
     /// # Canvas API
     /// `DELETE /api/v1/courses/:id/usage_rights`
-    pub async fn remove_usage_rights(
-        &self,
-        params: &[(String, String)],
-    ) -> Result<UsageRights> {
+    pub async fn remove_usage_rights(&self, params: &[(String, String)]) -> Result<UsageRights> {
         self.req()
             .delete(&format!("courses/{}/usage_rights", self.id), params)
             .await
@@ -1656,10 +1653,7 @@ impl Course {
     ///
     /// # Canvas API
     /// `GET /api/v1/courses/:course_id/grading_standards/:id`
-    pub async fn get_single_grading_standard(
-        &self,
-        standard_id: u64,
-    ) -> Result<GradingStandard> {
+    pub async fn get_single_grading_standard(&self, standard_id: u64) -> Result<GradingStandard> {
         self.req()
             .get(
                 &format!("courses/{}/grading_standards/{standard_id}", self.id),
@@ -1788,10 +1782,7 @@ impl Course {
     /// `GET /api/v1/courses/:course_id/epub_exports/:id`
     pub async fn get_epub_export(&self, epub_id: u64) -> Result<serde_json::Value> {
         self.req()
-            .get(
-                &format!("courses/{}/epub_exports/{epub_id}", self.id),
-                &[],
-            )
+            .get(&format!("courses/{}/epub_exports/{epub_id}", self.id), &[])
             .await
     }
 
@@ -1799,10 +1790,7 @@ impl Course {
     ///
     /// # Canvas API
     /// `PUT /api/v1/courses/:course_id/custom_gradebook_column_data`
-    pub async fn column_data_bulk_update(
-        &self,
-        params: &[(String, String)],
-    ) -> Result<Progress> {
+    pub async fn column_data_bulk_update(&self, params: &[(String, String)]) -> Result<Progress> {
         let mut p: Progress = self
             .req()
             .put(
@@ -1868,10 +1856,7 @@ impl Course {
     ) -> Result<serde_json::Value> {
         self.req()
             .get(
-                &format!(
-                    "courses/{}/analytics/users/{user_id}/assignments",
-                    self.id
-                ),
+                &format!("courses/{}/analytics/users/{user_id}/assignments", self.id),
                 &[],
             )
             .await
@@ -1906,10 +1891,7 @@ impl Course {
     ) -> Result<serde_json::Value> {
         self.req()
             .get(
-                &format!(
-                    "courses/{}/analytics/users/{user_id}/activity",
-                    self.id
-                ),
+                &format!("courses/{}/analytics/users/{user_id}/activity", self.id),
                 &[],
             )
             .await
@@ -1963,10 +1945,7 @@ impl Course {
         body: &serde_json::Value,
     ) -> Result<serde_json::Value> {
         self.req()
-            .nq_post(
-                &format!("courses/{}/accommodations", self.id),
-                body,
-            )
+            .nq_post(&format!("courses/{}/accommodations", self.id), body)
             .await
     }
 
@@ -2151,10 +2130,7 @@ impl Course {
     /// `DELETE /api/v1/users/self/course_nicknames/:course_id`
     pub async fn remove_nickname(&self) -> Result<serde_json::Value> {
         self.req()
-            .delete(
-                &format!("users/self/course_nicknames/{}", self.id),
-                &[],
-            )
+            .delete(&format!("users/self/course_nicknames/{}", self.id), &[])
             .await
     }
 

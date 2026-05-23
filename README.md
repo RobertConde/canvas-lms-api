@@ -10,7 +10,7 @@ A Rust client for the [Instructure Canvas LMS REST API](https://canvas.instructu
 
 ```toml
 [dependencies]
-canvas-lms-api = "0.7"
+canvas-lms-api = "1"
 tokio = { version = "1", features = ["full"] }
 ```
 
@@ -45,20 +45,23 @@ async fn main() -> canvas_lms_api::Result<()> {
 | `graphql` | no | GraphQL endpoint support |
 | `full` | no | All optional features |
 
-## Resources covered (v0.7)
+## Resources covered (v1.0)
+
+Full API parity with the Python [`canvasapi`](https://github.com/ucfopen/canvasapi) library.
 
 **Core:** Course, User, Assignment (+ Group + Override), Submission, Enrollment,
 Section, Module (+ ModuleItem), Quiz (+ Question + Submission + Group + Report),
 Group (+ Membership + Category), Account, File, Folder, Page (+ Revision),
 DiscussionTopic (+ Entry), Progress, Tab, CustomGradebookColumn
 
-**Extended:** AccountCalendar, AppointmentGroup, Blueprint, CalendarEvent,
-Collaboration, CommunicationChannel, ContentExport, ContentMigration, Conversation,
-EnrollmentTerm, EPortfolio, ExternalTool, Feature / FeatureFlag,
-GradeChangeLog, GradebookHistory, GradingPeriod, GradingStandard,
-JWT, Login, LtiResourceLink, Outcome / OutcomeGroup / OutcomeImport,
+**Extended:** AccountCalendar, AccountNotification, AppointmentGroup, AuthenticationProvider,
+Bookmark, Blueprint, CalendarEvent, Collaboration, CommunicationChannel, CommMessage,
+ContentExport, ContentMigration, Conversation, CurrentUser, EnrollmentTerm, EPortfolio,
+ExternalFeed, ExternalTool, Favorite, Feature / FeatureFlag, GradeChangeLog, GradebookHistory,
+GradingPeriod, GradingStandard, JWT, License, Login, LtiResourceLink,
+Outcome / OutcomeGroup / OutcomeLink / OutcomeImport, PageView, PairingCode,
 Planner (Note + Override), Poll / PollChoice / PollSession / PollSubmission,
-Role, Rubric (+ Association + Assessment), SisImport
+Role, Rubric (+ Association + Assessment), Scope, SisImport, Todo, UsageRights
 
 **Feature-gated:** NewQuiz (`new-quizzes`), GraphQL queries (`graphql`)
 

@@ -437,7 +437,6 @@ async fn test_create_outcome_group_on_account() {
     assert_eq!(group.title.as_deref(), Some("New Outcomes"));
 }
 
-
 #[tokio::test]
 async fn test_account_delete() {
     let server = MockServer::start().await;
@@ -589,10 +588,22 @@ async fn test_create_notification() {
         .await;
 
     let params = vec![
-        ("account_notification[subject]".to_string(), "System maintenance".to_string()),
-        ("account_notification[message]".to_string(), "Canvas will be down".to_string()),
-        ("account_notification[start_at]".to_string(), "2024-01-01T00:00:00Z".to_string()),
-        ("account_notification[end_at]".to_string(), "2024-01-02T00:00:00Z".to_string()),
+        (
+            "account_notification[subject]".to_string(),
+            "System maintenance".to_string(),
+        ),
+        (
+            "account_notification[message]".to_string(),
+            "Canvas will be down".to_string(),
+        ),
+        (
+            "account_notification[start_at]".to_string(),
+            "2024-01-01T00:00:00Z".to_string(),
+        ),
+        (
+            "account_notification[end_at]".to_string(),
+            "2024-01-02T00:00:00Z".to_string(),
+        ),
     ];
     let result = account.create_notification(&params).await.unwrap();
     assert_eq!(result["id"], 7);
@@ -632,7 +643,11 @@ async fn test_get_user_notifications() {
         .mount(&server)
         .await;
 
-    let notifs = account.get_user_notifications(42).collect_all().await.unwrap();
+    let notifs = account
+        .get_user_notifications(42)
+        .collect_all()
+        .await
+        .unwrap();
     assert_eq!(notifs.len(), 2);
     assert_eq!(notifs[0].subject.as_deref(), Some("Welcome"));
 }
@@ -780,7 +795,11 @@ async fn test_query_audit_by_account() {
         .mount(&server)
         .await;
 
-    let events = account.query_audit_by_account().collect_all().await.unwrap();
+    let events = account
+        .query_audit_by_account()
+        .collect_all()
+        .await
+        .unwrap();
     assert_eq!(events.len(), 1);
     assert_eq!(events[0]["event_type"], "created");
 }
@@ -798,7 +817,10 @@ async fn test_get_department_level_grade_data_current() {
         .mount(&server)
         .await;
 
-    let result = account.get_department_level_grade_data_current().await.unwrap();
+    let result = account
+        .get_department_level_grade_data_current()
+        .await
+        .unwrap();
     assert!(result.is_array());
 }
 
@@ -815,7 +837,10 @@ async fn test_get_department_level_grade_data_completed() {
         .mount(&server)
         .await;
 
-    let result = account.get_department_level_grade_data_completed().await.unwrap();
+    let result = account
+        .get_department_level_grade_data_completed()
+        .await
+        .unwrap();
     assert!(result.is_array());
 }
 
@@ -913,7 +938,10 @@ async fn test_get_department_level_statistics_current() {
         .mount(&server)
         .await;
 
-    let result = account.get_department_level_statistics_current().await.unwrap();
+    let result = account
+        .get_department_level_statistics_current()
+        .await
+        .unwrap();
     assert_eq!(result["courses"], 42);
 }
 
@@ -1115,7 +1143,10 @@ async fn test_account_update_global_notification() {
     let result = account
         .update_global_notification(
             5,
-            &[("account_notification[subject]".to_string(), "Updated Notice".to_string())],
+            &[(
+                "account_notification[subject]".to_string(),
+                "Updated Notice".to_string(),
+            )],
         )
         .await
         .unwrap();

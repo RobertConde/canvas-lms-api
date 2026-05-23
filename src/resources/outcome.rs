@@ -236,11 +236,7 @@ impl OutcomeGroup {
     /// # Canvas API
     /// `POST /api/v1/accounts/:account_id/outcome_groups/:id/outcomes`
     /// `POST /api/v1/courses/:course_id/outcome_groups/:id/outcomes`
-    pub async fn link_new(
-        &self,
-        title: &str,
-        params: &[(String, String)],
-    ) -> Result<OutcomeLink> {
+    pub async fn link_new(&self, title: &str, params: &[(String, String)]) -> Result<OutcomeLink> {
         let mut all_params = vec![("title".to_string(), title.to_string())];
         all_params.extend_from_slice(params);
         let mut link: OutcomeLink = self

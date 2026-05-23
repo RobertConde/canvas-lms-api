@@ -529,8 +529,10 @@ impl Assignment {
             message: "Assignment has no course_id".to_string(),
             errors: vec![],
         })?;
-        let endpoint =
-            format!("courses/{course_id}/assignments/{}/submissions/{user_id}/files", self.id);
+        let endpoint = format!(
+            "courses/{course_id}/assignments/{}/submissions/{user_id}/files",
+            self.id
+        );
         initiate_and_upload(self.req(), &endpoint, request, data).await
     }
 }

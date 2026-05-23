@@ -975,7 +975,6 @@ async fn test_user_remove_usage_rights() {
     assert_eq!(result.message.as_deref(), Some("2 files updated"));
 }
 
-
 #[tokio::test]
 async fn test_user_get_assignments() {
     let server = MockServer::start().await;
@@ -990,11 +989,7 @@ async fn test_user_get_assignments() {
         .mount(&server)
         .await;
 
-    let assignments: Vec<_> = user
-        .get_assignments(10)
-        .collect_all()
-        .await
-        .unwrap();
+    let assignments: Vec<_> = user.get_assignments(10).collect_all().await.unwrap();
     assert_eq!(assignments.len(), 2);
     assert_eq!(assignments[0].id, 1);
     assert_eq!(assignments[1].id, 2);

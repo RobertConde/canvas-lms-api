@@ -406,7 +406,6 @@ async fn test_entry_rate_invalid() {
     assert!(result.is_err());
 }
 
-
 #[tokio::test]
 async fn test_discussion_topic_get_parent_course() {
     let server = MockServer::start().await;

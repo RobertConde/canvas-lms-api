@@ -5,8 +5,8 @@ use crate::{
     params::wrap_params,
     resources::{
         collaboration::Collaboration, discussion_topic::DiscussionTopic,
-        external_feed::ExternalFeed, file::File, folder::Folder, license::License,
-        page::Page, progress::Progress, usage_rights::UsageRights, user::User,
+        external_feed::ExternalFeed, file::File, folder::Folder, license::License, page::Page,
+        progress::Progress, usage_rights::UsageRights, user::User,
     },
 };
 use serde::{Deserialize, Serialize};
@@ -685,10 +685,7 @@ impl Group {
     ///
     /// # Canvas API
     /// `DELETE /api/v1/groups/:id/usage_rights`
-    pub async fn remove_usage_rights(
-        &self,
-        params: &[(String, String)],
-    ) -> Result<UsageRights> {
+    pub async fn remove_usage_rights(&self, params: &[(String, String)]) -> Result<UsageRights> {
         self.req()
             .delete(&format!("groups/{}/usage_rights", self.id), params)
             .await

@@ -131,7 +131,10 @@ impl Submission {
     pub async fn create_submission_peer_review(&self, assessor_id: u64) -> Result<PeerReview> {
         let prefix = self.course_assignment_user_prefix()?;
         let params = vec![("user_id".to_string(), assessor_id.to_string())];
-        let mut pr: PeerReview = self.req().post(&format!("{prefix}/peer_reviews"), &params).await?;
+        let mut pr: PeerReview = self
+            .req()
+            .post(&format!("{prefix}/peer_reviews"), &params)
+            .await?;
         pr.requester = self.requester.clone();
         pr.course_id = self.course_id;
         pr.assignment_id = self.assignment_id;
